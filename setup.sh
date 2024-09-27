@@ -250,26 +250,26 @@ ConfigureUser() {
 }
 
 ConfigurePackages() {
-    apt update -y
-    apt -y install zsh ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook
+    apt update
+    apt install zsh ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook
     mkdir -p /etc/apt/keyrings
     rm -rf /etc/apt/keyrings/nodesource.gpg
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
     NODE_MAJOR=22
     echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-    apt -y install nodejs
+    apt install nodejs
     sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
     sudo mkdir -p /etc/apt/keyrings
     curl -fsSL https://archive.heckel.io/apt/pubkey.txt | sudo gpg --dearmor -o /etc/apt/keyrings/archive.heckel.io.gpg
     sudo apt-get install apt-transport-https
     sudo sh -c "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/archive.heckel.io.gpg] https://archive.heckel.io/apt debian main' \
         > /etc/apt/sources.list.d/archive.heckel.io.list"  
-    sudo apt update -y
-    sudo apt install ntfy -y
+    sudo apt update
+    sudo apt install ntfy
     sudo systemctl enable ntfy
     sudo systemctl start ntfy
-    apt update -y
-    apt upgrade -y
+    apt update
+    apt upgrade
 }
 
 ConfigureServer() {
