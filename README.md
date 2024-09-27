@@ -2,7 +2,7 @@
 
 ```bash
 $ apt-get install git
-$ git clone https://github.com/Ashlayyy/SetupScript.git
+$ git clone https://github.com/Ashlayyy/VPSSetupScript
 $ cd SetupScript
 $ sudo chmod +x setup.sh
 $ ./setup.sh
