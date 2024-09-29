@@ -305,7 +305,7 @@ ConfigureServer() {
     sudo ufw deny 80 comment 'Deny use of unsecured trafic'
     sudo ufw allow 443 comment 'Allow use of secured trafic'
     sudo ufw allow $SSH_Port
-    sudo ufw limit $SSH_Port comment 'SSH port rate limit'
+    #sudo ufw limit $SSH_Port comment 'SSH port rate limit'
     sudo ufw enable
     sudo ufw status
     sudo systemctl restart ssh
@@ -332,11 +332,15 @@ ConfigureScriptOnLogin() {
     listen-http: "-"
     listen-https: ":443"
     behind-proxy: true
+    auth-file: "/var/lib/ntfy/user.db"
+    auth-default-access: "deny-all"
     key-file: "/etc/letsencrypt/live/ntfy.$domain.key"
     cert-file: "/etc/letsencrypt/live/ntfy.$domain.crt"
     cache-file: "/var/cache/ntfy/cache.db"
     attachment-cache-dir: "/var/cache/ntfy/attachments"
     " >> /etc/ntfy/server.yml
+    ntfy user add --role=admin ashlay
+    ntfy serve --help
 }
 
 ConfigureDocker() {
