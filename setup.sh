@@ -91,10 +91,10 @@ ConfigureGithubHook() {
     ls -la /sites/$domain/Temp/config/
     mv /sites/$domain/Temp/config/hooks.json /sites/$domain/Config/Webhooks/hooks.json
     rm -rf /sites/$domain/Temp/
-    sed -i "/--id--/$GithubHookID/g" /sites/$domain/Config/Webhooks/hooks.json
-    sed -i "/--scriptUrl--//sites/$domain/Scripts/site_hook.sh/g" /sites/$domain/Config/Webhooks/hooks.json
-    sed -i "/--directive--///g" /sites/$domain/Config/Webhooks/hooks.json
-    sed -i "/--secret--/$GithubHookSecret/g" /sites/$domain/Config/Webhooks/hooks.json
+    sed -i "/--id--/c\\$GithubHookID/g" /sites/$domain/Config/Webhooks/hooks.json
+    sed -i "/--scriptUrl--/c\/sites/$domain/Scripts/site_hook.sh/g" /sites/$domain/Config/Webhooks/hooks.json
+    sed -i "/--directive--/c\//g" /sites/$domain/Config/Webhooks/hooks.json
+    sed -i "/--secret--/c\\$GithubHookSecret/g" /sites/$domain/Config/Webhooks/hooks.json
 
     cat <<EOF >"/sites/$domain/Scripts/site_hook.sh"
         cd "/sites/$domain/site/$optionalFolder"
