@@ -233,7 +233,8 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot --nginx -d $domain -d www.$domain --nginx-server-root ../conf.d/$domain.conf #--non-interactive --agree-tos --email $email --redirect
+    cat /etc/nginx/conf.d/$domain.conf
+    sudo certbot --nginx -d $domain -d www.$domain --nginx-server-root "/etc/nginx/conf.d/$domain.conf"
     sudo systemctl status certbot.timer
     sudo nginx -t
     sudo nginx -T
@@ -246,9 +247,6 @@ ConfigureUser() {
         adduser --disabled-password --gecos "" $createUser
         usermod -aG sudo $createUser
         echo -e "User: $createUser has been created!"
-        if [[ -z "$sshKey" ]]; then
-            break
-        fi
         if [[ ! -d "/home/$USERNAME/.ssh" ]]; then
             mkdir -p /home/$USERNAME/.ssh
         fi
@@ -349,6 +347,7 @@ ConfigureScriptOnLogin() {
     cache-file: "/var/cache/ntfy/cache.db"
     attachment-cache-dir: "/var/cache/ntfy/attachments"
     " >> /etc/ntfy/server.yml
+    cat /etc/ntfy/server.yml
     ntfy user add --role=admin ashlay
     (&>/dev/null ntfy serve &)
 }
