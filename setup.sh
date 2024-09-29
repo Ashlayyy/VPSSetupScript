@@ -171,6 +171,10 @@ ConfigureNGINX() {
         add_header Strict-Transport-Security "max-age=63072000" always;
         ssl_stapling on;
         ssl_stapling_verify on;
+        ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
+        include /etc/letsencrypt/options-ssl-nginx.conf;
+        ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
         $ErrorPage
         $InternalErrorPage
@@ -228,7 +232,7 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot --nginx -d $domain -d www.$domain --nginx-server-root "/etc/nginx/conf.d/"
+    sudo certbot -d $domain -d www.$domain --cert-only
     sudo systemctl status certbot.timer
     sudo nginx -t
     sudo nginx -T
@@ -307,15 +311,13 @@ ConfigureServer() {
     sudo ufw allow 443 comment 'Allow use of secured trafic'
     sudo ufw allow $SSH_Port
     #sudo ufw limit $SSH_Port comment 'SSH port rate limit'
-    sudo ufw enable
+    sudo ufw enable -y
     sudo ufw status
-    sudo systemctl restart ssh
-    sudo systemctl restart ufw
-    sudo systemctl restart nginx
     sudo nginx -s reload 
     sudo apt autoremove -y
 
     echo -e "Server has been configured"
+    echo -e "You should consider rebooting!"
 }
 
 ConfigureFail2Ban() {
