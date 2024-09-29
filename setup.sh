@@ -122,19 +122,10 @@ ConfigureNGINX() {
     proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=main_cache:10m max_size=1g inactive=360m use_temp_path=off;
 
     server {
-        listen 443 ssl http2;
-        listen [::]:443 ssl http2;
+        listen 443 http2;
+        listen [::]:443 http2;
         server_name ntfy.$domain www.ntfy.$domain;
         access_log /var/log/nginx/ntfy.$domain.access.log;
-
-        ssl_session_timeout 1d;
-        ssl_session_cache shared:MozSSL:10m;
-        ssl_session_tickets off;
-        ssl_protocols TLSv1.3;
-        ssl_prefer_server_ciphers off;
-        add_header Strict-Transport-Security "max-age=63072000" always;
-        ssl_stapling on;
-        ssl_stapling_verify on;
 
         location / {
             proxy_pass http://127.0.0.1:$NFTY_Port;
