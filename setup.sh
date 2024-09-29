@@ -224,7 +224,7 @@ EOF
 }
 
 ConfigurePM2() {
-    ps aux | grep pm2 | grep -v grep | awk '{print $2}' | xargs kill -9
+    ps aux | grep pm2 | grep -v grep | awk '{print $2}' | xargs kill -9 >> /dev/null
     npm install pm2 -g
     pm2 startup -u $user
     sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $user --hp /home/$user
@@ -233,11 +233,10 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot --nginx -d $domain -d www.$domain --nginx-server-root /etc/nginx/conf.d/$domain.conf #--non-interactive --agree-tos --email $email --redirect
+    sudo certbot --nginx -d $domain -d www.$domain --nginx-server-root ../conf.d/$domain.conf #--non-interactive --agree-tos --email $email --redirect
     sudo systemctl status certbot.timer
     sudo nginx -t
     sudo nginx -T
-    #SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && certbot renew -q" | sudo tee -a /etc/crontab > /dev/null
     sudo systemctl reload nginx
 }
 
