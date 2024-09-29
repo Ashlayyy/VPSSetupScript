@@ -1,34 +1,3 @@
-[DEFAULT]
-allowipv6 = auto
-bantime  = 10m
-findtime  = 10m
-maxretry = 5
-maxmatches = %(maxretry)s
-mode = normal
-
-
-
-action_ = %(banaction)s[port="%(port)s", protocol="%(protocol)s", chain="%(chain)s"]
-action_mw = %(action_)s
-            %(mta)s-whois[sender="%(sender)s", dest="%(destemail)s", protocol="%(protocol)s", chain="%(chain)s"]
-action_mwl = %(action_)s
-             %(mta)s-whois-lines[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
-action_xarf = %(action_)s
-             xarf-login-attack[service=%(__name__)s, sender="%(sender)s", logpath="%(logpath)s", port="%(port)s"]
-action_cf_mwl = cloudflare[cfuser="%(cfemail)s", cftoken="%(cfapikey)s"]
-                %(mta)s-whois-lines[sender="%(sender)s", dest="%(destemail)s", logpath="%(logpath)s", chain="%(chain)s"]
-action_blocklist_de  = blocklist_de[email="%(sender)s", service="%(__name__)s", apikey="%(blocklist_de_apikey)s", agent="%(fail2ban_agent)s"]
-action = %(action_mwl)s
-
-
-#
-# JAILS
-#
-
-#
-# SSH servers
-#
-
 [sshd]
 enabled = true
 mode   = normal

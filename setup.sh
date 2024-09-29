@@ -258,7 +258,7 @@ ConfigureUser() {
 }
 
 ConfigurePackages() {
-    apt update
+    sudo apt update -y
     mkdir -p /etc/apt/keyrings
     rm -rf /etc/apt/keyrings/nodesource.gpg
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
@@ -269,16 +269,16 @@ ConfigurePackages() {
     sudo apt-get install apt-transport-https
     sudo sh -c "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/archive.heckel.io.gpg] https://archive.heckel.io/apt debian main' \
         > /etc/apt/sources.list.d/archive.heckel.io.list"  
-    sudo apt update
-    apt install nodejs npm
-    apt-get install nodejs npm
-    sudo apt install ntfy
-    apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook
+    sudo apt update -y
+    apt install nodejs npm -y
+    apt-get install nodejs npm -y
+    sudo apt install ntfy -y
+    apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook -y
     sudo systemctl enable ntfy
     sudo systemctl start ntfy
-    sudo apt-get install nodejs
-    apt update
-    apt upgrade
+    sudo apt-get install nodejs -y
+    apt update -y
+    apt upgrade -y
 }
 
 ConfigureServer() {
