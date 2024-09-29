@@ -333,6 +333,7 @@ ConfigureFail2Ban() {
 ConfigureScriptOnLogin() {
     mv $ScriptPath /sites/$domain/Scripts/OnLogin/script-on-login.sh
     chmod +x /sites/$domain/Scripts/OnLogin/script-on-login.sh
+    sudo rm -rf /etc/ntfy/server.yml
     sudo touch /etc/ntfy/server.yml
     sudo echo -e "  
     base-url: "http://ntfy.$domain"
