@@ -247,8 +247,6 @@ ConfigureUser() {
         adduser --disabled-password --gecos "" $createUser
         usermod -aG sudo $createUser
         echo -e "User: $createUser has been created!"
-
-        read </dev/tty -rp 'Enter SSH Key: ' sshKey
         if [[ -z "$sshKey" ]]; then
             break
         fi
@@ -256,7 +254,7 @@ ConfigureUser() {
             mkdir -p /home/$USERNAME/.ssh
         fi
         touch /home/$USERNAME/.ssh/authorized_keys
-        echo -e "$sshKey" >>/home/$USERNAME/.ssh/authorized_keys
+        echo -e "$key" >>/home/$USERNAME/.ssh/authorized_keys
         echo -e 'Saved SSH Key\n'
     fi
 }
