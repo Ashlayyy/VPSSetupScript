@@ -111,12 +111,13 @@ ConfigureNGINX() {
     fileLocation="/etc/nginx/conf.d/$domain.conf"
     rm -rf "/etc/nginx/sites-enabled/default"
     touch $fileLocation
-    sudo cat <<EOF > "/etc/nginx/nginx.conf"
+    cat <<EOF >"/etc/nginx/conf.d/$domain.conf"
+    user ash;
+
     events {
         worker_connections 40500;
     }
-EOF
-    cat <<EOF >"/etc/nginx/conf.d/$domain.conf"
+
     server {
         listen 80 default_server;
         listen [::]:80 default_server;
