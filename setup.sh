@@ -16,6 +16,8 @@ cancel() {
 
 SendHelpMenu() {
     echo -e
+    echo -e
+    echo -e
     echo -e "Usage: sudo ./setup.sh [-mh]"
     echo -e
     echo -e "Flags:"
@@ -33,6 +35,10 @@ SendHelpMenu() {
     echo -e "       -s | --ssl : Add the SSL certificate"
     echo -e "       -p | --port : Add the port number your server will be running on"
     echo -e "       --email : The email connected to this server"
+    echo -e "       --ssh-key : Add the SSH key for the user"
+    echo -e 
+    echo -e 
+    echo -e 
     exit 0
 }
 
@@ -227,7 +233,8 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot --nginx -d $domain -d www.$domain --non-interactive --agree-tos --email $email --redirect
+    sudo certbot --nginx -d $domain -d www.$domain --nginx-server-root /etc/nginx/conf.d/$domain.conf #--non-interactive --agree-tos --email $email --redirect
+    sudo systemctl status certbot.timer
     sudo nginx -t
     sudo nginx -T
     #SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && certbot renew -q" | sudo tee -a /etc/crontab > /dev/null
@@ -441,6 +448,11 @@ while [[ $# -gt 0 ]]; do
         ;;
     --email)
         email="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    --ssh-key)
+        key="$2"
         shift # past argument
         shift # past value
         ;;
