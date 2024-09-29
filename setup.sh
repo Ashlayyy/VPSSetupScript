@@ -220,7 +220,7 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot certonly --nginx -d $domain -d www.$domain
+    sudo certbot --nginx -d $domain -d www.$domain --email $email --agree-tos
     sudo systemctl status certbot.timer
     sed -i "/sslLocation/c\sl_session_timeout 1d;
         ssl_session_cache shared:MozSSL:10m;
