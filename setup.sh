@@ -232,7 +232,7 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot -d $domain -d www.$domain --cert-only
+    sudo certbot -d $domain -d www.$domain --manual
     sudo systemctl status certbot.timer
     sudo nginx -t
     sudo nginx -T
@@ -311,7 +311,7 @@ ConfigureServer() {
     sudo ufw allow 443 comment 'Allow use of secured trafic'
     sudo ufw allow $SSH_Port
     #sudo ufw limit $SSH_Port comment 'SSH port rate limit'
-    sudo ufw enable -y
+    yes 'y' | sudo ufw enable
     sudo ufw status
     sudo nginx -s reload 
     sudo apt autoremove -y
