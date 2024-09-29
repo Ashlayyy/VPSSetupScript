@@ -53,6 +53,8 @@ ConfigureFolderStructure() {
     sudo touch /var/www/html/502.html
 
     mkdir -p /sites/$domain/Temp/
+    
+    ls -la /sites/$domain/
 
     echo -e "Folder structure has been created"
 }
@@ -79,7 +81,9 @@ ConfigureGithubHook() {
         proxy_pass http://localhost:9000/hooks/;
     }"
 
-    git clone $GithubURL_Config /sites/$domain/Temp/
+    git clone $GithubURL_Config /sites/$domain/Temp/ config
+    ls -la /sites/$domain/Temp/
+    ls -la /sites/$domain/Temp/config/
     mv /sites/$domain/Temp/config/hooks.json /sites/$domain/Config/Webhooks/hooks.json
     rm -rf /sites/$domain/Temp/
     sed -i "s/--id--/$GithubHookID/g" /sites/$domain/Config/Webhooks/hooks.json
