@@ -171,8 +171,6 @@ ConfigureNGINX() {
         add_header Strict-Transport-Security "max-age=63072000" always;
         ssl_stapling on;
         ssl_stapling_verify on;
-        ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
 
         $ErrorPage
         $InternalErrorPage
