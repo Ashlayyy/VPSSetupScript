@@ -158,8 +158,8 @@ ConfigureNGINX() {
     }
 
     server {
-        listen 443 ssl http2;
-        listen [::]:443 ssl http2;
+        listen 443 http2;
+        listen [::]:443 http2;
         server_name $domain www.$domain;
         access_log /var/log/nginx/$domain.access.log;
 
@@ -168,9 +168,10 @@ ConfigureNGINX() {
         ssl_session_tickets off;
         ssl_protocols TLSv1.3;
         ssl_prefer_server_ciphers off;
-        add_header Strict-Transport-Security "max-age=63072000" always;
         ssl_stapling on;
         ssl_stapling_verify on;
+
+        #sslLocation
 
         $ErrorPage
         $InternalErrorPage
@@ -182,7 +183,7 @@ ConfigureNGINX() {
         proxy_set_header                X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header                X-Forwarded-Proto \$scheme;
         add_header                      X-Cache-Status \$upstream_cache_status;
-        add_header                      Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+        add_header                      Strict-Transport-Security "max-age=63072000" always; includeSubDomains; preload";
         add_header                      X-Frame-Options DENY;
         add_header                      X-Content-Type-Options nosniff;
         add_header                      X-XSS-Protection "1; mode=block";
@@ -230,8 +231,16 @@ ConfigurePM2() {
 ConfigureSSL() {
     sudo certbot certonly --nginx -d $domain -d www.$domain
     sudo systemctl status certbot.timer
+    sed -i "/sslLocation/c\sl_session_timeout 1d;
+        ssl_session_cache shared:MozSSL:10m;
+        ssl_session_tickets off;
+        ssl_protocols TLSv1.3;
+        ssl_prefer_server_ciphers off;
+        ssl_stapling on;
+        ssl_stapling_verify on;" /etc/nginx/conf.d/$domain.conf
+    sed -i "/listen 443 http2;/c\listen 443 ssl http2;"
+    sed -i "/listen [::]:443 http2;/c\listen [::]:443 ssl http2;"
     sudo nginx -t
-    sudo nginx -T
     sudo systemctl reload nginx
 }
 
