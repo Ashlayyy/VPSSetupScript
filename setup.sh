@@ -81,7 +81,7 @@ ConfigureGithubHook() {
         proxy_pass http://localhost:9000/hooks/;
     }"
 
-    git clone $GithubURL_Config /sites/$domain/Temp/ config
+    git clone $GithubURL_Config /sites/$domain/Temp/config/
     ls -la /sites/$domain/Temp/
     ls -la /sites/$domain/Temp/config/
     mv /sites/$domain/Temp/config/hooks.json /sites/$domain/Config/Webhooks/hooks.json
@@ -258,21 +258,21 @@ ConfigureUser() {
 
 ConfigurePackages() {
     apt update
-    apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook
     mkdir -p /etc/apt/keyrings
     rm -rf /etc/apt/keyrings/nodesource.gpg
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
     NODE_MAJOR=22
     echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-    apt install nodejs npm
-    apt-get install nodejs npm
     sudo mkdir -p /etc/apt/keyrings
     curl -fsSL https://archive.heckel.io/apt/pubkey.txt | sudo gpg --dearmor -o /etc/apt/keyrings/archive.heckel.io.gpg
     sudo apt-get install apt-transport-https
     sudo sh -c "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/archive.heckel.io.gpg] https://archive.heckel.io/apt debian main' \
         > /etc/apt/sources.list.d/archive.heckel.io.list"  
     sudo apt update
+    apt install nodejs npm
+    apt-get install nodejs npm
     sudo apt install ntfy
+    apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook
     sudo systemctl enable ntfy
     sudo systemctl start ntfy
     sudo apt-get install nodejs
@@ -319,6 +319,7 @@ ConfigureServer() {
     sudo systemctl restart ufw
     sudo systemctl restart nginx
     sudo nginx -s reload 
+    sudo apt autoremove
 
     echo -e "Server has been configured"
 }
