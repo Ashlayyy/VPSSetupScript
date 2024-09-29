@@ -3,7 +3,6 @@
 export LC_ALL=C
 
 GithubURL_Config="https://github.com/Ashlayyy/config.git"
-Fail2BanURL="https://github.com/Ashlayyy/Fail2Ban.git"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 ScriptPath="$SCRIPT_DIR/script-on-login.sh"
 SSH_Port=1087
@@ -86,10 +85,10 @@ ConfigureGithubHook() {
     ls -la /sites/$domain/Temp/config/
     mv /sites/$domain/Temp/config/hooks.json /sites/$domain/Config/Webhooks/hooks.json
     rm -rf /sites/$domain/Temp/
-    sed -i "s/--id--/$GithubHookID/g" /sites/$domain/Config/Webhooks/hooks.json
-    sed -i "s/--scriptUrl--//sites/$domain/Scripts/site_hook.sh/g" /sites/$domain/Config/Webhooks/hooks.json
-    sed -i "s/--directive--///g" /sites/$domain/Config/Webhooks/hooks.json
-    sed -i "s/--secret--/$GithubHookSecret/g" /sites/$domain/Config/Webhooks/hooks.json
+    sed -i "/--id--/$GithubHookID/g" /sites/$domain/Config/Webhooks/hooks.json
+    sed -i "/--scriptUrl--//sites/$domain/Scripts/site_hook.sh/g" /sites/$domain/Config/Webhooks/hooks.json
+    sed -i "/--directive--///g" /sites/$domain/Config/Webhooks/hooks.json
+    sed -i "/--secret--/$GithubHookSecret/g" /sites/$domain/Config/Webhooks/hooks.json
 
     cat <<EOF >"/sites/$domain/Scripts/site_hook.sh"
         cd "/sites/$domain/site/$optionalFolder"
@@ -228,11 +227,10 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot --nginx -d $domain -d www.$domain --non-interactive --agree-tos --email $email
+    sudo certbot --nginx -d $domain -d www.$domain --non-interactive --agree-tos --email $email --redirect
     sudo nginx -t
     sudo nginx -T
-    SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && certbot renew -q" | sudo tee -a /etc/crontab > /dev/null
-    sudo nginx -t
+    #SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && certbot renew -q" | sudo tee -a /etc/crontab > /dev/null
     sudo systemctl reload nginx
 }
 
@@ -298,7 +296,7 @@ ConfigureServer() {
     sed -i '/#MaxStartups 10:30:100/c\MaxStartups 10:30:55' /etc/ssh/sshd_config
     sed -i '/#PermitTunnel no/c\PermitTunnel no' /etc/ssh/sshd_config
     sed -i '/#Banner none/c\Banner none' /etc/ssh/sshd_config
-    sed -i '/Subsystem    sftp    /usr/lib/ssh/sftp-server/c\#Subsystem    sftp    /usr/lib/ssh/sftp-server' /etc/ssh/sshd_config
+    sed -i '/Subsystem    sftp    \/usr/lib/ssh/sftp-server/c\#Subsystem    sftp    \/usr/lib/ssh/sftp-server' /etc/ssh/sshd_config
     sed -i "/#Port 22/c\Port $SSH_Port" /etc/ssh/sshd_config
     sed -i "/UsePAM yes/c\UsePAM no" /etc/ssh/sshd_config
     echo -e "ForceCommand /sites/$domain/Scripts/OnLogin/script-on-login.sh" >> /etc/ssh/sshd_config
@@ -327,7 +325,7 @@ ConfigureServer() {
 ConfigureFail2Ban() {
     apt-get install fail2ban
     systemctl status fail2ban.service
-    sudo cp /SetupScript/fail2ban.txt /etc/fail2ban/jail.local
+    sudo cp $SCRIPT_DIR/fail2ban.txt /etc/fail2ban/jail.local
 }
 
 ConfigureScriptOnLogin() {
