@@ -49,6 +49,8 @@ ConfigureFolderStructure() {
     mkdir -p /sites/$domain/Scripts/
     mkdir -p /sites/$domain/Scripts/OnLogin/
     mkdir -p /sites/$domain/Site/
+    sudo touch /var/www/html/404.html
+    sudo touch /var/www/html/502.html
 
     mkdir -p /sites/$domain/Temp/
 
@@ -78,7 +80,7 @@ ConfigureGithubHook() {
     }"
 
     git clone $GithubURL_Config /sites/$domain/Temp/
-    mv /sites/$domain/Temp/config/config.json /sites/$domain/Config/Webhooks/hooks.json
+    mv /sites/$domain/Temp/config/hooks.json /sites/$domain/Config/Webhooks/hooks.json
     rm -rf /sites/$domain/Temp/
     sed -i "s/--id--/$GithubHookID/g" /sites/$domain/Config/Webhooks/hooks.json
     sed -i "s/--scriptUrl--//sites/$domain/Scripts/site_hook.sh/g" /sites/$domain/Config/Webhooks/hooks.json
@@ -100,7 +102,7 @@ ConfigureNGINX() {
     fileLocation="/etc/nginx/conf.d/$domain.conf"
     rm -rf "/etc/nginx/sites-enabled/default"
     touch $fileLocation
-    cat <<EOF > "/etc/nginx/nginx.conf"
+    sudo cat <<EOF > "/etc/nginx/nginx.conf"
     events {
         worker_connections 40500;
     }
@@ -138,10 +140,10 @@ EOF
             proxy_request_buffering off;
             proxy_redirect off;
 
-            proxy_set_header Host $http_host;
-            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Host \$http_host;
+            proxy_set_header Upgrade \$http_upgrade;
             proxy_set_header Connection "upgrade";
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
 
             proxy_connect_timeout 3m;
             proxy_send_timeout 3m;
@@ -175,7 +177,7 @@ EOF
         proxy_set_header                X-Real-IP \$remote_addr;
         proxy_set_header                X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header                X-Forwarded-Proto \$scheme;
-        add_header                      X-Cache-Status $upstream_cache_status;
+        add_header                      X-Cache-Status \$upstream_cache_status;
         add_header                      Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
         add_header                      X-Frame-Options DENY;
         add_header                      X-Content-Type-Options nosniff;
@@ -213,17 +215,18 @@ EOF
 }
 
 ConfigurePM2() {
+    ps aux | grep pm2 | grep -v grep | awk '{print $2}' | xargs kill -9
     npm install pm2 -g
     pm2 startup -u $user
-    env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $user --hp /home/$user
     sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $user --hp /home/$user
     pm2 save
-    sudo systemctl enable pm2-$user
     sudo systemctl start pm2-$user
 }
 
 ConfigureSSL() {
-    sudo certbot --nginx -d $domain -d www.$domain -d ntfy.$domain -d www.ntfy.$domain --non-interactive --agree-tos --email $email --user-agent "" --keep-until-expiring --expand --quiet --redirect --must-staple --staple-ocsp
+    sudo certbot --nginx -d $domain -d www.$domain --non-interactive --agree-tos --email $email
+    sudo nginx -t
+    sudo nginx -T
     SLEEPTIME=$(awk 'BEGIN{srand(); print int(rand()*(3600+1))}'); echo "0 0,12 * * * root sleep $SLEEPTIME && certbot renew -q" | sudo tee -a /etc/crontab > /dev/null
     sudo nginx -t
     sudo systemctl reload nginx
@@ -251,7 +254,7 @@ ConfigureUser() {
 
 ConfigurePackages() {
     apt update
-    apt install zsh ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook
+    apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook
     mkdir -p /etc/apt/keyrings
     rm -rf /etc/apt/keyrings/nodesource.gpg
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
@@ -259,7 +262,6 @@ ConfigurePackages() {
     echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
     apt install nodejs npm
     apt-get install nodejs npm
-    sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
     sudo mkdir -p /etc/apt/keyrings
     curl -fsSL https://archive.heckel.io/apt/pubkey.txt | sudo gpg --dearmor -o /etc/apt/keyrings/archive.heckel.io.gpg
     sudo apt-get install apt-transport-https
@@ -269,6 +271,7 @@ ConfigurePackages() {
     sudo apt install ntfy
     sudo systemctl enable ntfy
     sudo systemctl start ntfy
+    sudo apt-get install nodejs
     apt update
     apt upgrade
 }
@@ -340,7 +343,7 @@ ConfigureScriptOnLogin() {
     attachment-cache-dir: "/var/cache/ntfy/attachments"
     " >> /etc/ntfy/server.yml
     ntfy user add --role=admin ashlay
-    ntfy serve --help
+    (&>/dev/null ntfy serve &)
 }
 
 ConfigureDocker() {
@@ -516,11 +519,11 @@ fi
 
 ConfigureEverything() {
     ConfigurePackages
-    ConfigureUser
     ConfigureDocker
+    ConfigureUser
+    ConfigureFolderStructure
     ConfigurePM2
     ConfigureErrorPage
-    ConfigureFolderStructure
     ConfigureGithubHook
     ConfigureNGINX
     ConfigureGitClone
