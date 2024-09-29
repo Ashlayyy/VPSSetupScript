@@ -112,12 +112,6 @@ ConfigureNGINX() {
     rm -rf "/etc/nginx/sites-enabled/default"
     touch $fileLocation
     cat <<EOF >"/etc/nginx/conf.d/$domain.conf"
-    user ash;
-
-    events {
-        worker_connections 40500;
-    }
-
     server {
         listen 80 default_server;
         listen [::]:80 default_server;
@@ -234,8 +228,7 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    cat /etc/nginx/conf.d/$domain.conf
-    sudo certbot --nginx -d $domain -d www.$domain --nginx-server-root "/etc/nginx/conf.d/$domain.conf"
+    sudo certbot --nginx -d $domain -d www.$domain --nginx-server-root "/etc/nginx/conf.d/"
     sudo systemctl status certbot.timer
     sudo nginx -t
     sudo nginx -T
@@ -320,13 +313,13 @@ ConfigureServer() {
     sudo systemctl restart ufw
     sudo systemctl restart nginx
     sudo nginx -s reload 
-    sudo apt autoremove
+    sudo apt autoremove -y
 
     echo -e "Server has been configured"
 }
 
 ConfigureFail2Ban() {
-    apt-get install fail2ban
+    apt-get install fail2ban -y
     systemctl status fail2ban.service
     sudo cp $SCRIPT_DIR/fail2ban.txt /etc/fail2ban/jail.local
 }
