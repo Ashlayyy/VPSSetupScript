@@ -292,7 +292,7 @@ ConfigureServer() {
     sed -i '/#MaxStartups 10:30:100/c\MaxStartups 10:30:55' /etc/ssh/sshd_config
     sed -i '/#PermitTunnel no/c\PermitTunnel no' /etc/ssh/sshd_config
     sed -i '/#Banner none/c\Banner none' /etc/ssh/sshd_config
-    sed -i '/Subsystem    sftp    \/usr/lib/ssh/sftp-server/c\#Subsystem    sftp    \/usr/lib/ssh/sftp-server' /etc/ssh/sshd_config
+    sed -i '/\"Subsystem    sftp    \/usr/lib/ssh/sftp-server\"/c\\"#Subsystem    sftp    \/usr/lib/ssh/sftp-server\"' /etc/ssh/sshd_config
     sed -i "/#Port 22/c\Port $SSH_Port" /etc/ssh/sshd_config
     sed -i "/UsePAM yes/c\UsePAM no" /etc/ssh/sshd_config
     echo -e "ForceCommand /sites/$domain/Scripts/OnLogin/script-on-login.sh" >> /etc/ssh/sshd_config
