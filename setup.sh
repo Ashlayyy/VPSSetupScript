@@ -173,8 +173,6 @@ ConfigureNGINX() {
         ssl_stapling_verify on;
         ssl_certificate /etc/letsencrypt/live/$domain/fullchain.pem;
         ssl_certificate_key /etc/letsencrypt/live/$domain/privkey.pem;
-        include /etc/letsencrypt/options-ssl-nginx.conf;
-        ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
         $ErrorPage
         $InternalErrorPage
@@ -232,7 +230,7 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot -d $domain -d www.$domain --manual
+    sudo certbot certonly --nginx -d $domain -d www.$domain
     sudo systemctl status certbot.timer
     sudo nginx -t
     sudo nginx -T
