@@ -284,9 +284,9 @@ ConfigureServer() {
     sed -i "/#Port 22/c\Port $SSH_Port" /etc/ssh/sshd_config
     sed -i "/UsePAM yes/c\UsePAM no" /etc/ssh/sshd_config
     echo -e "ForceCommand /sites/$domain/Scripts/OnLogin/script-on-login.sh" >> /etc/ssh/sshd_config
-    echo -e "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
-            KexAlgorithms curve25519-sha256
-            MACs hmac-sha2-512-etm@openssh.com" >> /etc/ssh/sshd_config
+    echo -e "Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes256-cbc
+            KexAlgorithms diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256,ecdh-sha2-nistp521
+            MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com" >> /etc/ssh/sshd_config
     #,hmac-sha2-256-etm@openssh.com.umac-128-etm@openssh.com
     echo -e "SSH has been configured. It uses port $SSH_Port"
     sudo ufw default allow outgoing
@@ -294,7 +294,7 @@ ConfigureServer() {
     #sudo grep IPV6 /etc/default/ufw
     sudo ufw deny 80 comment 'Deny use of unsecured trafic'
     sudo ufw allow 443 comment 'Allow use of secured trafic'
-    sudo ufw allow $SSH_Port
+    sudo ufw allow $SSH_Port/tcp
     sudo ufw allow ssh
     #sudo ufw limit $SSH_Port comment 'SSH port rate limit'
     yes 'y' | sudo ufw enable
@@ -330,7 +330,7 @@ ConfigureScriptOnLogin() {
     cache-file: "/var/cache/ntfy/cache.db"
     attachment-cache-dir: "/var/cache/ntfy/attachments"
     " >> /etc/ntfy/server.yml
-    cat /etc/ntfy/server.yml
+    ntfy serve
     ntfy user add --role=admin ashlay
     (&>/dev/null ntfy serve &)
 }
