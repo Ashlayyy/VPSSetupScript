@@ -223,15 +223,15 @@ ConfigureSSL() {
     sudo certbot --dry-run --nginx -d $domain -d www.$domain --email $email --agree-tos
     sudo certbot --dry-run --nginx -d ntfy.$domain -d www.ntfy.$domain --email $email --agree-tos
     sudo systemctl status certbot.timer
-    sed -i "/sslLocation/c\sl_session_timeout 1d;
+    sed -i "/\sslLocation/c\/sl_session_timeout 1d;
         ssl_session_cache shared:MozSSL:10m;
         ssl_session_tickets off;
         ssl_protocols TLSv1.3;
         ssl_prefer_server_ciphers off;
         ssl_stapling on;
         ssl_stapling_verify on;" /etc/nginx/conf.d/$domain.conf
-    sed -i "/listen 443 http2;/c\listen 443 ssl http2;"
-    sed -i "/listen [::]:443 http2;/c\listen [::]:443 ssl http2;"
+    sed -i "/listen 443 http2;/c\listen 443 ssl http2;" /etc/nginx/conf.d/$domain.conf
+    sed -i "/listen [::]:443 http2;/c\listen [::]:443 ssl http2;" /etc/nginx/conf.d/$domain.conf
     sudo nginx -t
     sudo systemctl reload nginx
 }
