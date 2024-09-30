@@ -5,7 +5,7 @@ sed -i '/#sslLocation/c\
         ssl_protocols TLSv1.3;\
         ssl_prefer_server_ciphers off;\
         ssl_stapling on;\
-        ssl_stapling_verify on/;' $1
+        ssl_stapling_verify on;' $1
 
 echo "Sed command executed successfully"
 echo "File $1 has been modified"
