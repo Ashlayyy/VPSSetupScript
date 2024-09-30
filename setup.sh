@@ -289,11 +289,12 @@ ConfigureServer() {
             MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com.umac-128-etm@openssh.com" >> /etc/ssh/sshd_config
     echo -e "SSH has been configured. It uses port $SSH_Port"
     sudo ufw default allow outgoing
-    sudo ufw default deny incoming
-    sudo grep IPV6 /etc/default/ufw
+    #sudo ufw default deny incoming
+    #sudo grep IPV6 /etc/default/ufw
     sudo ufw deny 80 comment 'Deny use of unsecured trafic'
     sudo ufw allow 443 comment 'Allow use of secured trafic'
     sudo ufw allow $SSH_Port
+    sudo ufw allow ssh
     #sudo ufw limit $SSH_Port comment 'SSH port rate limit'
     yes 'y' | sudo ufw enable
     sudo ufw status

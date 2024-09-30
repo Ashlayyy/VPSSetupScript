@@ -1,4 +1,4 @@
-sed '/#sslLocation/c\
+sed -i '/#sslLocation/c\
         ssl_session_timeout 1d;\
         ssl_session_cache shared:MozSSL:10m;\
         ssl_session_tickets off;\
