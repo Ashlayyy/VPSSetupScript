@@ -224,7 +224,7 @@ ConfigureSSL() {
     sudo certbot --dry-run --nginx -d ntfy.$domain -d www.ntfy.$domain --email $email --agree-tos
     sudo systemctl status certbot.timer
     chmod +x $SCRIPT_DIR/sed-command.sh
-    ./$SCRIPT_DIR/sed-command.sh /etc/nginx/conf.d/$domain.conf
+    $SCRIPT_DIR/sed-command.sh /etc/nginx/conf.d/$domain.conf
     sed -i "/listen 443 http2;/c\listen 443 ssl http2;" /etc/nginx/conf.d/$domain.conf
     sed -i "/listen [::]:443 http2;/c\listen [::]:443 ssl http2;" /etc/nginx/conf.d/$domain.conf
     sudo nginx -t
