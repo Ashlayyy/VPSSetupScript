@@ -286,7 +286,8 @@ ConfigureServer() {
     echo -e "ForceCommand /sites/$domain/Scripts/OnLogin/script-on-login.sh" >> /etc/ssh/sshd_config
     echo -e "Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
             KexAlgorithms curve25519-sha256
-            MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com.umac-128-etm@openssh.com" >> /etc/ssh/sshd_config
+            MACs hmac-sha2-512-etm@openssh.com" >> /etc/ssh/sshd_config
+    #,hmac-sha2-256-etm@openssh.com.umac-128-etm@openssh.com
     echo -e "SSH has been configured. It uses port $SSH_Port"
     sudo ufw default allow outgoing
     #sudo ufw default deny incoming
