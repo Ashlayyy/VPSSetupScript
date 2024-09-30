@@ -211,7 +211,7 @@ EOF
 }
 
 ConfigurePM2() {
-    ps aux | grep pm2 | grep -v grep | awk '{print $2}' | xargs kill -9 >> /dev/null
+    ps aux | grep pm2 | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1
     npm install pm2 -g
     pm2 startup -u $user
     sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $user --hp /home/$user
@@ -223,13 +223,8 @@ ConfigureSSL() {
     sudo certbot --dry-run --nginx -d $domain -d www.$domain --email $email --agree-tos
     sudo certbot --dry-run --nginx -d ntfy.$domain -d www.ntfy.$domain --email $email --agree-tos
     sudo systemctl status certbot.timer
-    sed -i "/\sslLocation/c\/sl_session_timeout 1d;
-        ssl_session_cache shared:MozSSL:10m;
-        ssl_session_tickets off;
-        ssl_protocols TLSv1.3;
-        ssl_prefer_server_ciphers off;
-        ssl_stapling on;
-        ssl_stapling_verify on;" /etc/nginx/conf.d/$domain.conf
+    chmod +x $SCRIPT_DIR/sed-command.sh
+    ./$SCRIPT_DIR/sed-command.sh /etc/nginx/conf.d/$domain.conf
     sed -i "/listen 443 http2;/c\listen 443 ssl http2;" /etc/nginx/conf.d/$domain.conf
     sed -i "/listen [::]:443 http2;/c\listen [::]:443 ssl http2;" /etc/nginx/conf.d/$domain.conf
     sudo nginx -t
