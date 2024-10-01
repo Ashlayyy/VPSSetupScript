@@ -227,9 +227,10 @@ ConfigureUser() {
     if [[ $createUser != "" ]]; then
         user=$createUser
         adduser --disabled-password --gecos "" $createUser
-        usermod -aG sudo $createUser
-        usermod -p '*' $createUser
-        echo -e "User: $createUser has been created!"
+        usermod -aG sudo $user
+        usermod -p '*' $user
+        echo -e "User: $user has been created!"
+        passwd -l $user
         if [[ ! -d "/home/$USERNAME/.ssh" ]]; then
             mkdir -p /home/$USERNAME/.ssh
         fi
