@@ -231,14 +231,12 @@ ConfigureUser() {
         usermod -p '*' $user
         echo -e "User: $user has been created!"
         passwd -l $user
-        if [[ ! -d "/home/$USERNAME/.ssh" ]]; then
-            mkdir -p /home/$USERNAME/.ssh
-        fi
-        touch /home/$USERNAME/.ssh/authorized_keys
+        mkdir -p /home/$user/.ssh
+        touch /home/$user/.ssh/authorized_keys
         #HARD CODED SSH PUBLIC KEY - DON'T FORGET TO REMOVE IT
-        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAkvac0CCv23eE0anDNhMDcMeufRzzt0al3hfKw4nwAU ashlay@DESKTOP-IOIIFT1" >>/home/$USERNAME/.ssh/authorized_keys
-        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH7nUpnJT8r///U/cEYk3Wko2UcVkhNdldfuICU8L21y ashlaysteur@Ashlays-MacBook-Pro.local" >>/home/$USERNAME/.ssh/authorized_keys
-        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG9bcC6M31YRW3zk4f7r3cyxiF8f2Wyaj/7oRWrzFD2E ashlaysteur@Ashlays-MacBook-Pro.local" >>/home/$USERNAME/.ssh/authorized_keys
+        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAkvac0CCv23eE0anDNhMDcMeufRzzt0al3hfKw4nwAU ashlay@DESKTOP-IOIIFT1" >>/home/$user/.ssh/authorized_keys
+        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH7nUpnJT8r///U/cEYk3Wko2UcVkhNdldfuICU8L21y ashlaysteur@Ashlays-MacBook-Pro.local" >>/home/$user/.ssh/authorized_keys
+        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG9bcC6M31YRW3zk4f7r3cyxiF8f2Wyaj/7oRWrzFD2E ashlaysteur@Ashlays-MacBook-Pro.local" >>/home/$user/.ssh/authorized_keys
         echo -e 'Saved SSH Key\n'
     fi
 }
@@ -287,7 +285,6 @@ ConfigureServer() {
     sed -i '/#Banner none/c\Banner none' /etc/ssh/sshd_config
     sed -i '/Subsystem\"/c\#Subsystem' /etc/ssh/sshd_config
     sed -i "/#Port 22/c\Port $SSH_Port" /etc/ssh/sshd_config
-    sed -i "/UsePAM yes/c\UsePAM no" /etc/ssh/sshd_config
     echo -e "AllowUsers     $user" >> /etc/ssh/sshd_config
     echo -e "ForceCommand /sites/$domain/Scripts/OnLogin/script-on-login.sh" >> /etc/ssh/sshd_config
     echo -e "Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes256-cbc
