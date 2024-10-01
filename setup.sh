@@ -306,6 +306,9 @@ ConfigureServer() {
     sudo nginx -s reload 
     sudo apt autoremove -y
 
+    sudo systemctl enable ssh
+    sudo systemctl restart ssh
+
     echo -e "Server has been configured"
     echo -e "You should consider rebooting!"
 }
