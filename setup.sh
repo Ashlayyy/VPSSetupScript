@@ -124,6 +124,33 @@ ConfigureNGINX() {
     server {
         listen 443 http2;
         listen [::]:443 http2;
+        server_name ntfy.$domain www.ntfy.$domain;
+        access_log /var/log/nginx/ntfy.$domain.access.log;
+
+        location / {
+            proxy_pass http://127.0.0.1:$NFTY_Port;
+            proxy_http_version 1.1;
+
+            proxy_buffering off;
+            proxy_request_buffering off;
+            proxy_redirect off;
+
+            proxy_set_header Host \$http_host;
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+
+            proxy_connect_timeout 3m;
+            proxy_send_timeout 3m;
+            proxy_read_timeout 3m;
+
+            client_max_body_size 0;
+        }
+    }
+
+    server {
+        listen 443 http2;
+        listen [::]:443 http2;
         server_name $domain www.$domain;
         access_log /var/log/nginx/$domain.access.log;
 
@@ -170,44 +197,6 @@ ConfigureNGINX() {
           add_header X-XSS-Protection "1; mode=block";
           add_header Referrer-Policy "origin";
           rewrite ^([^.]*[^/])$ \$1/ permanent;
-        }
-    }
-EOF
-
-    cat <<EOF >"/etc/nginx/conf.d/nfty.$domain.conf"
-    server {
-        listen 80 default_server;
-        listen [::]:80 default_server;
-        server_name _;
-        return 301 https:/\$host\$request_uri;
-    }
-
-    proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=main_cache:10m max_size=1g inactive=360m use_temp_path=off;
-
-    server {
-        listen 443 http2;
-        listen [::]:443 http2;
-        server_name ntfy.$domain www.ntfy.$domain;
-        access_log /var/log/nginx/ntfy.$domain.access.log;
-
-        location / {
-            proxy_pass http://127.0.0.1:$NFTY_Port;
-            proxy_http_version 1.1;
-
-            proxy_buffering off;
-            proxy_request_buffering off;
-            proxy_redirect off;
-
-            proxy_set_header Host \$http_host;
-            proxy_set_header Upgrade \$http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-
-            proxy_connect_timeout 3m;
-            proxy_send_timeout 3m;
-            proxy_read_timeout 3m;
-
-            client_max_body_size 0;
         }
     }
 EOF
@@ -268,7 +257,7 @@ ConfigurePackages() {
     apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook -y
     sudo systemctl enable ntfy
     sudo systemctl start ntfy
-    sudo apt-get install nodejs -y
+    sudo apt install nodejs -y
     apt update -y
     apt upgrade -y
 }
@@ -304,9 +293,10 @@ ConfigureServer() {
     sudo grep IPV6 /etc/default/ufw
     sudo ufw deny 80 comment 'Deny use of unsecured trafic'
     sudo ufw allow 443 comment 'Allow use of secured trafic'
-    sudo ufw allow $SSH_Port/tcp
-    #sudo ufw allow ssh
-    sudo ufw limit $SSH_Port comment 'SSH port rate limit'
+    sudo ufw allow OpenSSH
+    sudo ufw allow 'Nginx HTTPS'
+    sudo ufw limit $SSH_Port/tcp comment 'SSH port rate limit'
+    sudo ufw limit $SSH_Port/udp comment 'SSH port rate limit'
     yes 'y' | sudo ufw enable
     sudo ufw status
     sudo nginx -s reload 
