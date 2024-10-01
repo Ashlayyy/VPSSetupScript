@@ -287,6 +287,7 @@ ConfigureServer() {
     sed -i '/Subsystem\"/c\#Subsystem' /etc/ssh/sshd_config
     sed -i "/#Port 22/c\Port $SSH_Port" /etc/ssh/sshd_config
     sed -i "/UsePAM yes/c\UsePAM no" /etc/ssh/sshd_config
+    echo -e "AllowUsers     $user" >> /etc/ssh/sshd_config
     echo -e "ForceCommand /sites/$domain/Scripts/OnLogin/script-on-login.sh" >> /etc/ssh/sshd_config
     echo -e "Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes256-cbc
             KexAlgorithms diffie-hellman-group14-sha256,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256,ecdh-sha2-nistp521
@@ -303,11 +304,14 @@ ConfigureServer() {
     sudo ufw limit $SSH_Port/udp comment 'SSH port rate limit'
     yes 'y' | sudo ufw enable
     sudo ufw status
+    sudo ufw reload
     sudo nginx -s reload 
     sudo apt autoremove -y
 
-    sudo systemctl enable ssh
-    sudo systemctl restart ssh
+    cat "/home/$user/.ssh/authorized_keys"
+
+    #sudo systemctl enable ssh
+    #sudo systemctl restart ssh
 
     echo -e "Server has been configured"
     echo -e "You should consider rebooting!"
