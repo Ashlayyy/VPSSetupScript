@@ -1,8 +1,13 @@
+[DEFAULT]
+bantime  = 36000
+maxretry = 2
+
 [sshd]
 enabled = true
-mode   = normal
-port    = ssh
-logpath = %(sshd_log)s
+mode   = aggressive
+port   = 1087
+sshd_backend = systemd
+logpath = /var/log/auth.log
 backend = %(sshd_backend)s
 
 [nginx-http-auth]

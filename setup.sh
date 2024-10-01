@@ -319,7 +319,7 @@ ConfigureScriptOnLogin() {
     sudo echo -e "  
     base-url: "http://ntfy.$domain"
     upstream-base-url: "https://ntfy.sh"
-    listen-http: ""
+    listen-http: ":80"
     listen-https: ":443"
     behind-proxy: true
     auth-file: "/var/lib/ntfy/user.db"
