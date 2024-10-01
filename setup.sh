@@ -228,6 +228,7 @@ ConfigureUser() {
         user=$createUser
         adduser --disabled-password --gecos "" $createUser
         usermod -aG sudo $createUser
+        usermod -p '*' $createUser
         echo -e "User: $createUser has been created!"
         if [[ ! -d "/home/$USERNAME/.ssh" ]]; then
             mkdir -p /home/$USERNAME/.ssh
@@ -235,6 +236,8 @@ ConfigureUser() {
         touch /home/$USERNAME/.ssh/authorized_keys
         #HARD CODED SSH PUBLIC KEY - DON'T FORGET TO REMOVE IT
         echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAkvac0CCv23eE0anDNhMDcMeufRzzt0al3hfKw4nwAU ashlay@DESKTOP-IOIIFT1" >>/home/$USERNAME/.ssh/authorized_keys
+        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH7nUpnJT8r///U/cEYk3Wko2UcVkhNdldfuICU8L21y ashlaysteur@Ashlays-MacBook-Pro.local" >>/home/$USERNAME/.ssh/authorized_keys
+        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG9bcC6M31YRW3zk4f7r3cyxiF8f2Wyaj/7oRWrzFD2E ashlaysteur@Ashlays-MacBook-Pro.local" >>/home/$USERNAME/.ssh/authorized_keys
         echo -e 'Saved SSH Key\n'
     fi
 }
