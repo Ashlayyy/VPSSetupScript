@@ -212,8 +212,8 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot --dry-run --nginx -d $domain -d www.$domain --email $email --agree-tos
-    sudo certbot --dry-run --nginx -d ntfy.$domain -d www.ntfy.$domain --email $email --agree-tos
+    sudo certbot --nginx -d $domain -d www.$domain --email $email --agree-tos
+    sudo certbot --nginx -d ntfy.$domain -d www.ntfy.$domain --email $email --agree-tos
     sudo systemctl status certbot.timer
     chmod +x $SCRIPT_DIR/sed-command.sh
     sudo $SCRIPT_DIR/sed-command.sh /etc/nginx/conf.d/$domain.conf
