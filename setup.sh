@@ -128,7 +128,7 @@ ConfigureNGINX() {
 
     server {
         server_name ntfy.$domain www.ntfy.$domain;
-        listen 443 http2;
+        listen 444 http2;
         access_log /var/log/nginx/ntfy.$domain.access.log;
 
         location / {
@@ -346,7 +346,7 @@ ConfigureScriptOnLogin() {
     echo -e "NTFY Starting up!"
     sudo ntfy serve &
     echo -e "NTFY Started up!"
-    yes $NTFY_PASSWORD | sudo ntfy user add --role=admin $user
+    yes "$NTFY_PASSWORD" | sudo ntfy user add --role=admin $user
     echo -e "NTFY User has been added"
 
     echo -e "TOKEN READING FRM FILE"
@@ -373,8 +373,8 @@ ConfigureScriptOnLogin() {
         fi
     done
 
-    sed -i '/NTFYTOKEN=TESTTOKEN\"/c\NTFYTOKEN=$token' /sites/$domain/Scripts/OnLogin/script-on-login.sh
-    sed -i '/NTFYURL=TESTDOMAIN\"/c\NTFYURL=https://ntfy.$Domain/$STRING' /sites/$domain/Scripts/OnLogin/script-on-login.sh
+    sed -i "/NTFYTOKEN=TESTTOKEN/c\NTFYTOKEN=$token" /sites/$domain/Scripts/OnLogin/script-on-login.sh
+    sed -i "/NTFYURL=TESTDOMAIN/c\NTFYURL=https://ntfy.$Domain/$STRING" /sites/$domain/Scripts/OnLogin/script-on-login.sh
     sudo ntfy serve
 }
 
