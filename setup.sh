@@ -337,8 +337,8 @@ ConfigureScriptOnLogin() {
     auth-file: "/var/lib/ntfy/user.db"
     auth-default-access: "deny-all"
     cache-file: "/var/cache/ntfy/cache.db"
-    attachment-cache-dir: "/var/cache/ntfy/attachments",
-    enable-metrics: true,
+    attachment-cache-dir: "/var/cache/ntfy/attachments"
+    enable-metrics: true
     log-format: "json"
     log-level: "info"
     log-file: "/var/log/ntfy/ntfy.log"
@@ -348,6 +348,7 @@ ConfigureScriptOnLogin() {
     echo -e "NTFY Started up!"
     yes "$NTFY_PASSWORD" | sudo ntfy user add --role=admin $user
     echo -e "NTFY User has been added"
+    sudo ntfy user list
 
     echo -e "TOKEN READING FRM FILE"
 
@@ -357,6 +358,7 @@ ConfigureScriptOnLogin() {
     expiry=($(echo "$tokenListString" | grep -oP 'never expires|expires at [^,]+'))
 
     if [ ${#tokens[@]} -eq 0 ]; then
+        echo -e "CREATING TOKEN"
         sudo ntfy token add ash &> temp.txt
         tokenString=$(<temp.txt)
         token=$(echo "$tokenString" | awk '/tk_/ {print $2}')
@@ -367,12 +369,15 @@ ConfigureScriptOnLogin() {
         token="${tokens[0]}"
     fi
 
-    for i in "${!expiry[@]}"; do
-        if [[ ${expiry[$i]} == "never expires" ]]; then
-            token="${tokens[$i]}"
-        fi
-    done
+    if [ ${#tokens[@]} -gt 1 ]; then
+        for i in "${!expiry[@]}"; do
+            if [[ ${expiry[$i]} == "never expires" ]]; then
+                token="${tokens[$i]}"
+            fi
+        done
+    fi
 
+    echo -e "UPDATING NTFY CONFIG"
     sed -i "/NTFYTOKEN=TESTTOKEN/c\NTFYTOKEN=$token" /sites/$domain/Scripts/OnLogin/script-on-login.sh
     sed -i "/NTFYURL=TESTDOMAIN/c\NTFYURL=https://ntfy.$Domain/$STRING" /sites/$domain/Scripts/OnLogin/script-on-login.sh
     sudo ntfy serve
