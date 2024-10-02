@@ -94,13 +94,25 @@ ConfigureGithubHook() {
     ls -la /sites/$domain/Temp/config/
     mv /sites/$domain/Temp/config/hooks.json /sites/$domain/Config/Webhooks/hooks.json
     rm -rf /sites/$domain/Temp/
-    sed -i "/--id--/c\\$GithubHookID/g" /sites/$domain/Config/Webhooks/hooks.json
-    sed -i "/--scriptUrl--/c\/sites/$domain/Scripts/site_hook.sh/g" /sites/$domain/Config/Webhooks/hooks.json
-    sed -i "/--directive--/c\//g" /sites/$domain/Config/Webhooks/hooks.json
-    sed -i "/--secret--/c\\$GithubHookSecret/g" /sites/$domain/Config/Webhooks/hooks.json
+    hooks_json="/sites/$domain/Config/Webhooks/hooks.json"
+    cp "$hooks_json" "${hooks_json}.bak"
+    jq --arg id "$GithubHookID" \
+        --arg execute_command "/sites/$domain/Scripts/site_hook.sh" \
+        --arg secret "$GithubHookSecret" \
+        '.[].id = $id |
+        .[].["execute-command"] = $execute_command |
+        .[].["command-working-directory"] = "/" |
+        .[].["trigger-rule"].and |= map(
+            if .match.type == "payload-hmac-sha1" then
+                .match.secret = $secret
+            else
+                .
+            end
+        )' \
+    "$hooks_json" > "${hooks_json}.tmp" && mv "${hooks_json}.tmp" "$hooks_json"
 
     cat <<EOF >"/sites/$domain/Scripts/site_hook.sh"
-        cd "/sites/$domain/site/$optionalFolder"
+        cd "/sites/$domain/Site/$optionalFolder"
         git pull origin $githubBranch
         npm install
         pm2 reload all
@@ -128,7 +140,7 @@ ConfigureNGINX() {
 
     server {
         server_name ntfy.$domain www.ntfy.$domain;
-        listen 444 http2;
+        #listen 444 http2;
         access_log /var/log/nginx/ntfy.$domain.access.log;
 
         location / {
@@ -153,7 +165,7 @@ ConfigureNGINX() {
     }
 
     server {
-        listen 443 http2;
+        #listen 443 http2;
         server_name $domain www.$domain;
         access_log /var/log/nginx/$domain.access.log;
 
@@ -252,7 +264,7 @@ ConfigurePackages() {
     apt install nodejs npm -y
     apt-get install nodejs npm -y
     sudo apt install ntfy -y
-    apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook -y
+    apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook jq -y
     sudo systemctl enable ntfy
     sudo systemctl start ntfy
     sudo apt install nodejs -y
@@ -329,6 +341,8 @@ ConfigureScriptOnLogin() {
     chmod +x /sites/$domain/Scripts/OnLogin/script-on-login.sh
     sudo rm -rf /etc/ntfy/server.yml
     sudo touch /etc/ntfy/server.yml
+    sudo mkdir /var/log/ntfy
+    sudo touch /var/log/ntfy/ntfy.log
     sudo echo -e "  
     base-url: "http://ntfy.$domain"
     upstream-base-url: "https://ntfy.sh"
