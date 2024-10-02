@@ -106,6 +106,7 @@ ConfigureGithubHook() {
         pm2 reload all
 EOF
     chmod +x /sites/$domain/Scripts/site_hook.sh
+    echo -e "Starting webhook!"
     sudo webhook -hooks /sites/$domain/Config/Webhooks/hooks.json &
     echo -e "Github Webhook has been configured"
 }
@@ -342,8 +343,13 @@ ConfigureScriptOnLogin() {
     log-level: "info"
     log-file: "/var/log/ntfy/ntfy.log"
     " >> /etc/ntfy/server.yml
-    sudo ntfy serve
+    echo -e "NTFY Starting up!"
+    sudo ntfy serve &
+    echo -e "NTFY Started up!"
     yes $NTFY_PASSWORD | sudo ntfy user add --role=admin $user
+    echo -e "NTFY User has been added"
+
+    echo -e "TOKEN READING FRM FILE"
 
     sudo ntfy token list $user &> temp_list.txt
     tokenListString=$(<temp_list.txt)
