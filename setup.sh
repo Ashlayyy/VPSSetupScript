@@ -7,6 +7,10 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 ScriptPath="$SCRIPT_DIR/script-on-login.sh"
 SSH_Port=1087
 NFTY_Port=2586
+NTFY_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8; echo)"
+USER_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13; echo)"
+STRING="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+PID=0
 
 cancel() {
     echo -e
@@ -103,6 +107,7 @@ ConfigureGithubHook() {
         pm2 reload all
 EOF
     chmod +x /sites/$domain/Scripts/site_hook.sh
+    sudo webhook -hooks /sites/$domain/Config/Webhooks/hooks.json &
     echo -e "Github Webhook has been configured"
 }
 
@@ -122,9 +127,8 @@ ConfigureNGINX() {
     proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=main_cache:10m max_size=1g inactive=360m use_temp_path=off;
 
     server {
-        listen 443 http2;
-        listen [::]:443 http2;
         server_name ntfy.$domain www.ntfy.$domain;
+        listen 443 http2;
         access_log /var/log/nginx/ntfy.$domain.access.log;
 
         location / {
@@ -150,11 +154,8 @@ ConfigureNGINX() {
 
     server {
         listen 443 http2;
-        listen [::]:443 http2;
         server_name $domain www.$domain;
         access_log /var/log/nginx/$domain.access.log;
-
-        #sslLocation
 
         $ErrorPage
         $InternalErrorPage
@@ -212,13 +213,11 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot --nginx -d $domain -d www.$domain --email $email --agree-tos
-    sudo certbot --nginx -d ntfy.$domain -d www.ntfy.$domain --email $email --agree-tos
+    sudo certbot certonly --nginx -d $domain -d www.$domain --email $email --agree-tos
+    sudo certbot certonly --nginx -d ntfy.$domain -d www.ntfy.$domain --email $email --agree-tos
     sudo systemctl status certbot.timer
     chmod +x $SCRIPT_DIR/sed-command.sh
     sudo $SCRIPT_DIR/sed-command.sh /etc/nginx/conf.d/$domain.conf
-    sed -i "/listen 443 http2;/c\listen 443 ssl http2;" /etc/nginx/conf.d/$domain.conf
-    sed -i "/listen [::]:443 http2;/c\listen [::]:443 ssl http2;" /etc/nginx/conf.d/$domain.conf
     sudo nginx -t
     sudo systemctl reload nginx
 }
@@ -228,6 +227,7 @@ ConfigureUser() {
         user=$createUser
         adduser --disabled-password --gecos "" $createUser
         usermod -aG sudo $user
+        yes $USER_PASSWORD | passwd $user
         echo -e "User: $user has been created!"
         mkdir -p /home/$user/.ssh
         touch /home/$user/.ssh/authorized_keys
@@ -300,12 +300,20 @@ ConfigureServer() {
     sudo ufw reload
     sudo nginx -s reload 
     sudo apt autoremove -y
-
-    cat "/home/$user/.ssh/authorized_keys"
-
-    #sudo systemctl enable ssh
-    #sudo systemctl restart ssh
-
+    sudo systemctl enable ssh
+    sudo systemctl restart ssh
+    echo -e ""
+    echo -e "SSH User: $user"
+    echo -e "SSH Password: $USER_PASSWORD"
+    echo -e "Please do not loose this password! It is needed for sudo access!"
+    echo -e ""
+    echo -e "NTFY Domain: ntfy.$domain"
+    echo -e "NTFY topic: $STRING"
+    echo -e "NTFY Username: $user"
+    echo -e "NTFY Password: $NTFY_PASSWORD"
+    echo -e ""
+    echo -e ""
+    echo -e ""
     echo -e "Server has been configured"
     echo -e "You should consider rebooting!"
 }
@@ -324,19 +332,47 @@ ConfigureScriptOnLogin() {
     sudo echo -e "  
     base-url: "http://ntfy.$domain"
     upstream-base-url: "https://ntfy.sh"
-    listen-http: ":80"
-    listen-https: ":443"
+    listen-http: ":$NFTY_Port"
     behind-proxy: true
     auth-file: "/var/lib/ntfy/user.db"
     auth-default-access: "deny-all"
-    key-file: "/etc/letsencrypt/live/ntfy.$domain.key"
-    cert-file: "/etc/letsencrypt/live/ntfy.$domain.crt"
     cache-file: "/var/cache/ntfy/cache.db"
-    attachment-cache-dir: "/var/cache/ntfy/attachments"
+    attachment-cache-dir: "/var/cache/ntfy/attachments",
+    enable-metrics: true,
+    log-format: "json"
+    log-level: "info"
+    log-file: "/var/log/ntfy/ntfy.log"
     " >> /etc/ntfy/server.yml
-    ntfy serve
-    ntfy user add --role=admin ashlay
-    (&>/dev/null ntfy serve &)
+    sudo ntfy serve
+    sleep 2
+    kill $PID
+    yes $NTFY_PASSWORD | sudo ntfy user add --role=admin $user
+
+    sudo ntfy token list $user &> temp_list.txt
+    tokenListString=$(<temp_list.txt)
+    tokens=($(echo "$tokenListString" | grep -oP 'tk_[a-zA-Z0-9]+'))
+    expiry=($(echo "$tokenListString" | grep -oP 'never expires|expires at [^,]+'))
+
+    if [ ${#tokens[@]} -eq 0 ]; then
+        sudo ntfy token add ash &> temp.txt
+        tokenString=$(<temp.txt)
+        token=$(echo "$tokenString" | awk '/tk_/ {print $2}')
+        rm temp.txt
+    fi
+
+    if [ ${#tokens[@]} -eq 1 ]; then
+        token="${tokens[0]}"
+    fi
+
+    for i in "${!expiry[@]}"; do
+        if [[ ${expiry[$i]} == "never expires" ]]; then
+            token="${tokens[$i]}"
+        fi
+    done
+
+    sed -i '/NTFYTOKEN=TESTTOKEN\"/c\NTFYTOKEN=$token' /sites/$domain/Scripts/OnLogin/script-on-login.sh
+    sed -i '/NTFYURL=TESTDOMAIN\"/c\NTFYURL=https://ntfy.$Domain/$STRING' /sites/$domain/Scripts/OnLogin/script-on-login.sh
+    sudo ntfy serve
 }
 
 ConfigureDocker() {
