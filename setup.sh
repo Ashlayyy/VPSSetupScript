@@ -10,7 +10,6 @@ NFTY_Port=2586
 NTFY_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8; echo)"
 USER_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13; echo)"
 STRING="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
-PID=0
 
 cancel() {
     echo -e
@@ -213,8 +212,8 @@ ConfigurePM2() {
 }
 
 ConfigureSSL() {
-    sudo certbot certonly --nginx -d $domain -d www.$domain --email $email --agree-tos
-    sudo certbot certonly --nginx -d ntfy.$domain -d www.ntfy.$domain --email $email --agree-tos
+    sudo certbot --nginx -d $domain -d www.$domain --email $email --agree-tos
+    sudo certbot --nginx -d ntfy.$domain -d www.ntfy.$domain --email $email --agree-tos
     sudo systemctl status certbot.timer
     chmod +x $SCRIPT_DIR/sed-command.sh
     sudo $SCRIPT_DIR/sed-command.sh /etc/nginx/conf.d/$domain.conf
@@ -344,8 +343,6 @@ ConfigureScriptOnLogin() {
     log-file: "/var/log/ntfy/ntfy.log"
     " >> /etc/ntfy/server.yml
     sudo ntfy serve
-    sleep 2
-    kill $PID
     yes $NTFY_PASSWORD | sudo ntfy user add --role=admin $user
 
     sudo ntfy token list $user &> temp_list.txt
