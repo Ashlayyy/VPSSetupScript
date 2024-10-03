@@ -225,7 +225,7 @@ ConfigureNGINX() {
           allow $ip;
           allow $i2p;
           auth_basic                "Prometheus";
-          auth_basic_user_file      /etc/apache2/.prometheus.htpasswd;
+          auth_basic_user_file      /etc/nginx/.prometheus.htpasswd;
           proxy_set_header          Host \$host:\$server_port;
           proxy_set_header          X-Real-IP \$remote_addr;
           proxy_set_header          X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -249,7 +249,7 @@ ConfigureNGINX() {
           allow $ip;
           allow $ip2;
           auth_basic                "Grafana";
-          auth_basic_user_file      /etc/apache2/.grafana.htpasswd;
+          auth_basic_user_file      /etc/nginx/.grafana.htpasswd;
           proxy_set_header          Host \$host:\$server_port;
           proxy_set_header          X-Real-IP \$remote_addr;
           proxy_set_header          X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -303,9 +303,9 @@ ConfigureUser() {
     fi
     sudo groupadd --system prometheus
     sudo useradd -s /sbin/nologin --system -g prometheus prometheus
-    sudo htpasswd -b -c /etc/apache2/.prometheus.htpasswd "$PROMETHEUS_USERNAME" "$PROMETHEUS_PASSWORD"
-    sudo htpasswd -b -c /etc/apache2/.grafana.htpasswd "$GRAFANA_USERNAME" "$GRAFANA_PASSWORD"
-    cat /etc/apache2/.htpasswd
+
+    sudo htpasswd -b -c /etc/nginx/.prometheus.htpasswd "$PROMETHEUS_USERNAME" "$PROMETHEUS_PASSWORD"
+    sudo htpasswd -b -c /etc/nginx/.grafana.htpasswd "$GRAFANA_USERNAME" "$GRAFANA_PASSWORD"
 }
 
 ConfigurePackages() {
@@ -478,6 +478,7 @@ ConfigurePrometheus() {
     sudo mkdir /var/lib/prometheus
     mkdir -p /Sites/$domain/Config/Prometheus
     touch /Sites/$domain/Config/Prometheus/prometheus.yml
+    cd ~/VPSSetupScript/
     cd prometheus*/
     sudo mv prometheus /usr/local/bin
     sudo mv promtool /usr/local/bin
@@ -501,28 +502,26 @@ ConfigurePrometheus() {
     sudo systemctl start prometheus
 
     cat <<EOF >"/etc/prometheus/prometheus.yml"
-global:
-  scrape_interval: 15s
-  external_labels:
-    monitor: 'codelab-monitor'
-scrape_configs:
-    # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
-    - job_name: 'prometheus'
-        scrape_interval: 5s
-        static_configs:
-            - targets: ['localhost:9090']
-            labels: 'Prometheus PROD'
-
-    - job_name: 'NTFY'
-        scrape_interval: 5s
-        static_configs:
-            - targets: ['localhost:2586']
-            labels: 'Ntfy PROD'
-    - job_name: 'grafana'
-        scrape_interval: 5s
-        static_configs:
-            - targets: ['localhost:3000']
-            labels: 'Grafana PROD'
+        global:
+            scrape_interval: 15s
+            external_labels:
+                monitor: 'codelab-monitor'
+        scrape_configs:
+        - job_name: 'prometheus'
+            scrape_interval: 5s
+            static_configs:
+                - targets: ['localhost:9090']
+                labels: 'Prometheus PROD'
+        - job_name: 'NTFY'
+            scrape_interval: 5s
+            static_configs:
+                - targets: ['localhost:2586']
+                labels: 'Ntfy PROD'
+        - job_name: 'grafana'
+            scrape_interval: 5s
+            static_configs:
+                - targets: ['localhost:3000']
+                labels: 'Grafana PROD'
 
 EOF
 }
