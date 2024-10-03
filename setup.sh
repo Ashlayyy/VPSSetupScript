@@ -4,12 +4,19 @@ export LC_ALL=C
 
 GithubURL_Config="https://github.com/Ashlayyy/config.git"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ScriptPath="$SCRIPT_DIR/script-on-login.sh"
+ScriptPath="$SCRIPT_DIR/Config/script-on-login.sh"
 SSH_Port=1087
 NFTY_Port=2586
-NTFY_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8; echo)"
-USER_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13; echo)"
+NTFY_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+USER_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
 STRING="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+RANDOMSTRING_PROMETHEUS="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+RANDOMSTRING_GRAFANA="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+PROMETHEUS_USERNAME="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10; echo)"
+GRAFANA_USERNAME="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10; echo)"
+PROMETHEUS_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+GRAFANA_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+
 
 cancel() {
     echo -e
@@ -39,6 +46,7 @@ SendHelpMenu() {
     echo -e "       -p | --port : Add the port number your server will be running on"
     echo -e "       --email : The email connected to this server"
     echo -e "       --ssh-key : Add the SSH key for the user"
+    echo -e "       --ip : Add the IP address of the vpn server used to connect to Prometheus and Grafana"
     echo -e 
     echo -e 
     echo -e 
@@ -140,7 +148,6 @@ ConfigureNGINX() {
 
     server {
         server_name ntfy.$domain www.ntfy.$domain;
-        #listen 444 http2;
         access_log /var/log/nginx/ntfy.$domain.access.log;
 
         location / {
@@ -165,7 +172,6 @@ ConfigureNGINX() {
     }
 
     server {
-        #listen 443 http2;
         server_name $domain www.$domain;
         access_log /var/log/nginx/$domain.access.log;
 
@@ -211,6 +217,52 @@ ConfigureNGINX() {
           add_header Referrer-Policy "origin";
           rewrite ^([^.]*[^/])$ \$1/ permanent;
         }
+
+        location /$RANDOMSTRING_PROMETHEUS/prometheus/$RANDOMSTRING_PROMETHEUS/ {
+          satisfy all;
+          allow 127.0.0.1;
+          allow $ip;
+          auth_basic           "Prometheus";
+          auth_basic_user_file /etc/apache2/.htpasswd;
+          proxy_set_header        Host \$host:\$server_port;
+          proxy_set_header        X-Real-IP \$remote_addr;
+          proxy_set_header        X-Forwarded-For \$proxy_add_x_forwarded_for;
+          proxy_set_header        X-Forwarded-Proto \$scheme;
+          proxy_cache main_cache;
+          proxy_cache_valid 200 302 30m;
+          proxy_cache_valid 404 1m;
+          proxy_pass              http://localhost:9090;
+          proxy_read_timeout      90;
+          add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+          add_header X-Frame-Options DENY;
+          add_header X-Content-Type-Options nosniff;
+          add_header X-XSS-Protection "1; mode=block";
+          add_header Referrer-Policy "origin";
+          rewrite ^([^.]*[^/])$ \$1/ permanent;
+        }
+
+        location /$RANDOMSTRING_GRAFANA/grafana/$RANDOMSTRING_GRAFANA/ {
+          satisfy all;
+          allow 127.0.0.1;
+          allow $ip;
+          auth_basic                "Grafana";
+          auth_basic_user_file      /etc/apache2/.htpasswd;
+          proxy_set_header          Host \$host:\$server_port;
+          proxy_set_header          X-Real-IP \$remote_addr;
+          proxy_set_header          X-Forwarded-For \$proxy_add_x_forwarded_for;
+          proxy_set_header          X-Forwarded-Proto \$scheme;
+          proxy_cache main_cache;
+          proxy_cache_valid 200 302 30m;
+          proxy_cache_valid 404 1m;
+          proxy_pass              http://localhost:3000;
+          proxy_read_timeout      90;
+          add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+          add_header X-Frame-Options DENY;
+          add_header X-Content-Type-Options nosniff;
+          add_header X-XSS-Protection "1; mode=block";
+          add_header Referrer-Policy "origin";
+          rewrite ^([^.]*[^/])$ \$1/ permanent;
+        }
     }
 EOF
 }
@@ -246,6 +298,11 @@ ConfigureUser() {
         echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAkvac0CCv23eE0anDNhMDcMeufRzzt0al3hfKw4nwAU ashlay@DESKTOP-IOIIFT1" >>/home/$user/.ssh/authorized_keys
         echo -e 'Saved SSH Key\n'
     fi
+    sudo groupadd --system prometheus
+    sudo useradd -s /sbin/nologin --system -g prometheus prometheus
+    sudo htpasswd -b -c /etc/apache2/.htpasswd "$PROMETHEUS_USERNAME" "$PROMETHEUS_PASSWORD"
+    sudo htpasswd -b /etc/apache2/.htpasswd "$GRAFANA_USERNAME" "$GRAFANA_PASSWORD"
+    cat /etc/apache2/.htpasswd
 }
 
 ConfigurePackages() {
@@ -253,18 +310,25 @@ ConfigurePackages() {
     mkdir -p /etc/apt/keyrings
     rm -rf /etc/apt/keyrings/nodesource.gpg
     rm -rf /etc/apt/keyrings/archive.heckel.io.gpg
+    rm -rf /etc/apt/keyrings/grafana.gpg
+    sudo apt-get install apt-transport-https software-properties-common wget
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
     NODE_MAJOR=22
     echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
     curl -fsSL https://archive.heckel.io/apt/pubkey.txt | sudo gpg --dearmor -o /etc/apt/keyrings/archive.heckel.io.gpg
-    sudo apt-get install apt-transport-https
+    wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+    wget "https://github.com/prometheus/prometheus/releases/download/v2.54.1/prometheus-2.54.1.linux-amd64.tar.gz"
+
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
     sudo sh -c "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/archive.heckel.io.gpg] https://archive.heckel.io/apt debian main' \
         > /etc/apt/sources.list.d/archive.heckel.io.list"  
+    echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+    tar vxf prometheus*.tar.gz
     sudo apt update -y
     apt install nodejs npm -y
     apt-get install nodejs npm -y
     sudo apt install ntfy -y
-    apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook jq -y
+    apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook jq grafana-enterprise apache2-utils -y
     sudo systemctl enable ntfy
     sudo systemctl start ntfy
     sudo apt install nodejs -y
@@ -314,26 +378,12 @@ ConfigureServer() {
     sudo apt autoremove -y
     sudo systemctl enable ssh
     sudo systemctl restart ssh
-    echo -e ""
-    echo -e "SSH User: $user"
-    echo -e "SSH Password: $USER_PASSWORD"
-    echo -e "Please do not loose this password! It is needed for sudo access!"
-    echo -e ""
-    echo -e "NTFY Domain: ntfy.$domain"
-    echo -e "NTFY topic: $STRING"
-    echo -e "NTFY Username: $user"
-    echo -e "NTFY Password: $NTFY_PASSWORD"
-    echo -e ""
-    echo -e ""
-    echo -e ""
-    echo -e "Server has been configured"
-    echo -e "You should consider rebooting!"
 }
 
 ConfigureFail2Ban() {
     apt-get install fail2ban -y
     systemctl status fail2ban.service
-    sudo cp $SCRIPT_DIR/fail2ban.txt /etc/fail2ban/jail.local
+    sudo cp $SCRIPT_DIR/Config/fail2ban.txt /etc/fail2ban/jail.local
 }
 
 ConfigureScriptOnLogin() {
@@ -420,6 +470,90 @@ ConfigureGitClone() {
     pm2 save
 }
 
+ConfigurePrometheus() {
+    sudo mkdir /etc/prometheus
+    sudo mkdir /var/lib/prometheus
+    mkdir -p /Sites/$domain/Config/Prometheus
+    touch /Sites/$domain/Config/Prometheus/prometheus.yml
+    cd prometheus*/
+    sudo mv prometheus /usr/local/bin
+    sudo mv promtool /usr/local/bin
+    sudo chown prometheus:prometheus /usr/local/bin/prometheus
+    sudo chown prometheus:prometheus /usr/local/bin/promtool
+    sudo mv consoles /etc/prometheus
+    sudo mv console_libraries /etc/prometheus
+    sudo mv prometheus.yml /etc/prometheus
+    sudo rm /etc/prometheus/prometheus.yml
+    sudo touch /etc/prometheus/prometheus.yml
+    sudo chown prometheus:prometheus /etc/prometheus
+    sudo chown -R prometheus:prometheus /etc/prometheus/consoles
+    sudo chown -R prometheus:prometheus /etc/prometheus/console_libraries
+    sudo chown -R prometheus:prometheus /var/lib/prometheus
+
+    #REDO THIS ONE
+    sudo nano /etc/systemd/system/prometheus.service
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable prometheus
+    sudo systemctl start prometheus
+
+    cat <<EOF >"/etc/prometheus/prometheus.yml"
+global:
+  scrape_interval: 15s
+  external_labels:
+    monitor: 'codelab-monitor'
+scrape_configs:
+    # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+    - job_name: 'prometheus'
+        scrape_interval: 5s
+        static_configs:
+            - targets: ['localhost:9090']
+            labels: 'Prometheus PROD'
+
+    - job_name: 'NTFY'
+        scrape_interval: 5s
+        static_configs:
+            - targets: ['localhost:2586']
+            labels: 'Ntfy PROD'
+
+EOF
+}
+
+ConfigureGrafana() {
+    sudo systemctl daemon-reload
+    sudo systemctl start grafana-server
+    sudo systemctl status grafana-server
+    sudo systemctl enable grafana-server.service
+}
+
+
+SendEchoToEndUser() {
+    echo -e ""
+    echo -e "SSH: "
+    echo -e "SSH User: $user"
+    echo -e "SSH Password: $USER_PASSWORD"
+    echo -e "Please do not loose this password! It is needed for sudo access!"
+    echo -e ""
+    echo -e "NTFY: "
+    echo -e "NTFY Domain: ntfy.$domain"
+    echo -e "NTFY topic: $STRING"
+    echo -e "NTFY Username: $user"
+    echo -e "NTFY Password: $NTFY_PASSWORD"
+    echo -e ""
+    echo -e "Prometheus: "
+    echo -e "Prometheus Domain: $domain/$RANDOMSTRING_PROMETHEUS/prometheus/$RANDOMSTRING_PROMETHEUS/"
+    echo -e "Prometheus Username: $PROMETHEUS_USERNAME"
+    echo -e "Prometheus Password: $PROMETHEUS_PASSWORD"
+    echo -e ""
+    echo -e "Grafana: "
+    echo -e "Grafana Domain: $domain/$RANDOMSTRING_GRAFANA/grafana/$RANDOMSTRING_GRAFANA/"
+    echo -e "Grafana Username: $GRAFANA_USERNAME"
+    echo -e "Grafana Password: $GRAFANA_PASSWORD"
+    echo -e ""
+    echo -e "Server has been configured"
+    echo -e "You should consider rebooting!"
+}
+
 if [[ $# -eq 0 ]]; then
     SendHelpMenu
 fi
@@ -494,6 +628,11 @@ while [[ $# -gt 0 ]]; do
         ;;
     --ssh-key)
         key="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    --ip)
+        ip="$2"
         shift # past argument
         shift # past value
         ;;
@@ -584,9 +723,12 @@ ConfigureEverything() {
     ConfigureNGINX
     ConfigureGitClone
     ConfigureFail2Ban
+    ConfigurePrometheus
+    ConfigureGrafana
     ConfigureSSL
     ConfigureScriptOnLogin
     ConfigureServer
+    SendEchoToEndUser
 }
 
 ConfigureEverything
