@@ -222,17 +222,17 @@ ConfigureNGINX() {
           satisfy all;
           allow 127.0.0.1;
           allow $ip;
-          auth_basic           "Prometheus";
-          auth_basic_user_file /etc/apache2/.htpasswd;
-          proxy_set_header        Host \$host:\$server_port;
-          proxy_set_header        X-Real-IP \$remote_addr;
-          proxy_set_header        X-Forwarded-For \$proxy_add_x_forwarded_for;
-          proxy_set_header        X-Forwarded-Proto \$scheme;
+          auth_basic                "Prometheus";
+          auth_basic_user_file      /etc/apache2/.prometheus.htpasswd;
+          proxy_set_header          Host \$host:\$server_port;
+          proxy_set_header          X-Real-IP \$remote_addr;
+          proxy_set_header          X-Forwarded-For \$proxy_add_x_forwarded_for;
+          proxy_set_header          X-Forwarded-Proto \$scheme;
           proxy_cache main_cache;
           proxy_cache_valid 200 302 30m;
           proxy_cache_valid 404 1m;
-          proxy_pass              http://localhost:9090;
-          proxy_read_timeout      90;
+          proxy_pass                http://localhost:9090;
+          proxy_read_timeout        90;
           add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
           add_header X-Frame-Options DENY;
           add_header X-Content-Type-Options nosniff;
@@ -246,7 +246,7 @@ ConfigureNGINX() {
           allow 127.0.0.1;
           allow $ip;
           auth_basic                "Grafana";
-          auth_basic_user_file      /etc/apache2/.htpasswd;
+          auth_basic_user_file      /etc/apache2/.grafana.htpasswd;
           proxy_set_header          Host \$host:\$server_port;
           proxy_set_header          X-Real-IP \$remote_addr;
           proxy_set_header          X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -300,8 +300,8 @@ ConfigureUser() {
     fi
     sudo groupadd --system prometheus
     sudo useradd -s /sbin/nologin --system -g prometheus prometheus
-    sudo htpasswd -b -c /etc/apache2/.htpasswd "$PROMETHEUS_USERNAME" "$PROMETHEUS_PASSWORD"
-    sudo htpasswd -b /etc/apache2/.htpasswd "$GRAFANA_USERNAME" "$GRAFANA_PASSWORD"
+    sudo htpasswd -b -c /etc/apache2/.prometheus.htpasswd "$PROMETHEUS_USERNAME" "$PROMETHEUS_PASSWORD"
+    sudo htpasswd -b -c /etc/apache2/.grafana.htpasswd "$GRAFANA_USERNAME" "$GRAFANA_PASSWORD"
     cat /etc/apache2/.htpasswd
 }
 
@@ -515,6 +515,11 @@ scrape_configs:
         static_configs:
             - targets: ['localhost:2586']
             labels: 'Ntfy PROD'
+    - job_name: 'grafana'
+        scrape_interval: 5s
+        static_configs:
+            - targets: ['localhost:3000']
+            labels: 'Grafana PROD'
 
 EOF
 }
