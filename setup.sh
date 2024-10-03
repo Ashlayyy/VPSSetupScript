@@ -329,8 +329,10 @@ ConfigurePackages() {
     echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
     tar vxf prometheus*.tar.gz
     sudo apt update -y
-    apt install nodejs npm -y
-    apt-get install nodejs npm -y
+    apt install nodejs -y
+    apt-get install nodejs -y
+    apt install npm -y
+    apt-get install npm -y
     sudo apt install ntfy -y
     apt install ca-certificates curl gnupg sudo ufw htop curl nginx tmux git certbot python3-certbot-nginx autojump webhook jq grafana-enterprise apache2-utils -y
     sudo systemctl enable ntfy
