@@ -294,12 +294,13 @@ ConfigureUser() {
     if [[ $createUser != "" ]]; then
         user=$createUser
         adduser --disabled-password --gecos "" $createUser
+        sleep 2
         usermod -aG sudo $user
         yes $USER_PASSWORD | passwd $user
         echo -e "User: $user has been created!"
         mkdir -p /home/$user/.ssh
         touch /home/$user/.ssh/authorized_keys
-        echo -e "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAkvac0CCv23eE0anDNhMDcMeufRzzt0al3hfKw4nwAU ashlay@DESKTOP-IOIIFT1" >>/home/$user/.ssh/authorized_keys
+        echo -e "$key" >>/home/$user/.ssh/authorized_keys
         echo -e 'Saved SSH Key\n'
     fi
     sudo groupadd --system prometheus
