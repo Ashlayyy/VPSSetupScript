@@ -1,6 +1,7 @@
 #!/bin/bash
 
 export LC_ALL=C
+set -e;
 
 GithubURL_Config="https://github.com/Ashlayyy/config.git"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
