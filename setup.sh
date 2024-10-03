@@ -47,6 +47,7 @@ SendHelpMenu() {
     echo -e "       --email : The email connected to this server"
     echo -e "       --ssh-key : Add the SSH key for the user"
     echo -e "       --ip : Add the IP address of the vpn server used to connect to Prometheus and Grafana"
+    echo -e "       --ip2 : Add the second IP address of the vpn server used to connect to Prometheus and Grafana"
     echo -e 
     echo -e 
     echo -e 
@@ -222,6 +223,7 @@ ConfigureNGINX() {
           satisfy all;
           allow 127.0.0.1;
           allow $ip;
+          allow $i2p;
           auth_basic                "Prometheus";
           auth_basic_user_file      /etc/apache2/.prometheus.htpasswd;
           proxy_set_header          Host \$host:\$server_port;
@@ -245,6 +247,7 @@ ConfigureNGINX() {
           satisfy all;
           allow 127.0.0.1;
           allow $ip;
+          allow $ip2;
           auth_basic                "Grafana";
           auth_basic_user_file      /etc/apache2/.grafana.htpasswd;
           proxy_set_header          Host \$host:\$server_port;
@@ -638,6 +641,11 @@ while [[ $# -gt 0 ]]; do
         ;;
     --ip)
         ip="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    --ip2)
+        ip2="$2"
         shift # past argument
         shift # past value
         ;;
