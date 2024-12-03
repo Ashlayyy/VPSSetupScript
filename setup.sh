@@ -137,6 +137,18 @@ ConfigureNGINX() {
     fileLocation="/etc/nginx/conf.d/$domain.conf"
     rm -rf "/etc/nginx/sites-enabled/default"
     touch $fileLocation
+
+    echo -e "Configuring NGINX"
+    
+    # Create IP access control string only if IPs are provided
+    ip_access_control=""
+    if [[ -n "$ip" ]]; then
+        ip_access_control+="          allow $ip;\n"
+    fi
+    if [[ -n "$ip2" ]]; then
+        ip_access_control+="          allow $ip2;\n"
+    fi
+
     cat <<EOF >"/etc/nginx/conf.d/$domain.conf"
     server {
         listen 80 default_server;
@@ -222,8 +234,8 @@ ConfigureNGINX() {
         location /$RANDOMSTRING_PROMETHEUS/prometheus/$RANDOMSTRING_PROMETHEUS/ {
           satisfy all;
           allow 127.0.0.1;
-          allow $ip;
-          allow $i2p;
+          ${ip_access_control}          
+          deny all;
           auth_basic                "Prometheus";
           auth_basic_user_file      /etc/nginx/.prometheus.htpasswd;
           proxy_set_header          Host \$host:\$server_port;
@@ -246,8 +258,8 @@ ConfigureNGINX() {
         location /$RANDOMSTRING_GRAFANA/grafana/$RANDOMSTRING_GRAFANA/ {
           satisfy all;
           allow 127.0.0.1;
-          allow $ip;
-          allow $ip2;
+          ${ip_access_control}          
+          deny all;
           auth_basic                "Grafana";
           auth_basic_user_file      /etc/nginx/.grafana.htpasswd;
           proxy_set_header          Host \$host:\$server_port;
