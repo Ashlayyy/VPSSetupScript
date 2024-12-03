@@ -744,9 +744,9 @@ if [[ $ssl == false || $ssl == "" ]]; then
 fi
 
 ConfigureEverything() {
-    ConfigurePackages
-    ConfigureDocker
+    ConfigurePackages    
     ConfigureUser
+    ConfigureDocker
     ConfigureFolderStructure
     ConfigurePM2
     ConfigureErrorPage
