@@ -3,11 +3,11 @@ bantime  = 36000
 maxretry = 2
 
 [sshd]
+backend=systemd
 enabled = true
 mode = aggressive
 port = 1087, 22
 logpath = %(sshd_log)s
-backend=systemd
 maxretry = 3
 findtime = 600
 bantime = 36000

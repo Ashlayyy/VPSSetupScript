@@ -395,7 +395,9 @@ ConfigureServer() {
 ConfigureFail2Ban() {
     apt-get install fail2ban -y
     systemctl status fail2ban.service
+    apt-get install python3-systemd -y
     sudo cp $SCRIPT_DIR/Config/fail2ban.txt /etc/fail2ban/jail.local
+    sudo systemctl restart fail2ban
 }
 
 ConfigureScriptOnLogin() {
