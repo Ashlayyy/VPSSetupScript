@@ -142,11 +142,19 @@ ConfigureNGINX() {
     
     # Create IP access control string only if IPs are provided
     ip_access_control=""
+    ip_access_control_list=""
     if [[ -n "$ip" ]]; then
-        ip_access_control+="          allow $ip;\n"
+        ip_access_control_list+="allow $ip;"$'\n'
     fi
     if [[ -n "$ip2" ]]; then
-        ip_access_control+="          allow $ip2;\n"
+        ip_access_control_list+="allow $ip2;"$'\n'
+    fi
+    
+    # Add proper indentation to each line
+    if [[ -n "$ip_access_control_list" ]]; then
+        while IFS= read -r line; do
+            ip_access_control+="          $line"
+        done <<< "$ip_access_control_list"
     fi
 
     cat <<EOF >"/etc/nginx/conf.d/$domain.conf"

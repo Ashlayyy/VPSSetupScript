@@ -1,5 +1,5 @@
 #!/bin/bash
-apt-get install git
+apt-get install git -y
 git clone https://github.com/Ashlayyy/VPSSetupScript.git
 cd VPSSetupScript
 chmod +x setup.sh
