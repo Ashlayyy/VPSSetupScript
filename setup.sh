@@ -505,13 +505,6 @@ ConfigurePrometheus() {
     sudo chown -R prometheus:prometheus /etc/prometheus/console_libraries
     sudo chown -R prometheus:prometheus /var/lib/prometheus
 
-    #REDO THIS ONE
-    sudo nano /etc/systemd/system/prometheus.service
-
-    sudo systemctl daemon-reload
-    sudo systemctl enable prometheus
-    sudo systemctl start prometheus
-
     cat <<EOF >"/etc/prometheus/prometheus.yml"
         global:
             scrape_interval: 15s
@@ -535,6 +528,12 @@ ConfigurePrometheus() {
                 labels: 'Grafana PROD'
 
 EOF
+
+    sudo cp $SCRIPT_DIR/Config/prometheus.service /etc/systemd/system/prometheus.service
+    sed -i "s|PATHHEREPLEASE|/usr/local/bin/prometheus|" /etc/systemd/system/prometheus.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable prometheus
+    sudo systemctl start prometheus
 }
 
 ConfigureGrafana() {
