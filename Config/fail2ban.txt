@@ -3,11 +3,12 @@ bantime  = 36000
 maxretry = 2
 
 [sshd]
+# Only need to set this whenever on Debian type of machines
 backend=systemd
 enabled = true
 mode = aggressive
 port = 1087, 22
-logpath = %(sshd_log)s
+# logpath = %(sshd_log)s
 maxretry = 3
 findtime = 600
 bantime = 36000
