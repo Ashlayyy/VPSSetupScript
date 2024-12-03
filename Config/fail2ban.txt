@@ -7,8 +7,8 @@ enabled = true
 mode = aggressive
 port = 1087, 22
 logpath = %(sshd_log)s
-backend = %(sshd_backend)s
-maxretry = 2
+backend=systemd
+maxretry = 3
 findtime = 600
 bantime = 36000
 
