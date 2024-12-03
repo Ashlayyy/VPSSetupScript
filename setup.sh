@@ -274,11 +274,17 @@ EOF
 ConfigurePM2() {
     echo -e "Configuring PM2"
     ps aux | grep pm2 | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1
+    echo -e "Killed PM2"
     npm install pm2 -g
+    echo -e "Installed PM2"
     pm2 startup -u $user
+    echo -e "Started PM2"
     sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $user --hp /home/$user
+    echo -e "Configured PM2"
     pm2 save
+    echo -e "Saved PM2"
     sudo systemctl start pm2-$user
+    echo -e "Started PM2"
 }
 
 ConfigureSSL() {
