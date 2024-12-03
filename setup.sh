@@ -273,7 +273,9 @@ EOF
 
 ConfigurePM2() {
     echo -e "Configuring PM2"
-    ps aux | grep pm2 | grep -v grep | awk '{print $2}' | xargs kill -9 >/dev/null 2>&1
+    if pm2 ping >/dev/null 2>&1; then
+        pm2 kill
+    fi
     echo -e "Killed PM2"
     npm install pm2 -g
     echo -e "Installed PM2"
