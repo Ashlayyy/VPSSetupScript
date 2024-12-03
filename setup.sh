@@ -292,10 +292,27 @@ ConfigureSSL() {
 
 ConfigureUser() {
     if [[ $createUser != "" ]]; then
+        echo -e "Creating user: $createUser"
         user=$createUser
         adduser --disabled-password --gecos "" $createUser
-        sleep 2
+        echo -e "User: $createUser has been created!"
+        # List all users with home directories
+        echo "Users with home directories:"
+        ls -l /home | awk '{print $9}'
+        echo ""
+        
+        # List all system users from /etc/passwd
+        echo "All system users:"
+        cat /etc/passwd | cut -d: -f1
+        echo ""
+        
+        # List users currently logged in
+        echo "Currently logged in users:"
+        who | cut -d' ' -f1 | sort | uniq
+        sleep 5
+        echo -e "Waiting 5 seconds before continuing..."
         usermod -aG sudo $user
+        echo -e "User: $user has been added to sudo group!"
         yes $USER_PASSWORD | passwd $user
         echo -e "User: $user has been created!"
         mkdir -p /home/$user/.ssh
