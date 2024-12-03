@@ -4,35 +4,37 @@ maxretry = 2
 
 [sshd]
 enabled = true
-mode   = aggressive
-port   = 1087, 22
-sshd_backend = systemd
-logpath = /var/log/auth.log
+mode = aggressive
+port = 1087, 22
+logpath = %(sshd_log)s
 backend = %(sshd_backend)s
+maxretry = 2
+findtime = 600
+bantime = 36000
 
 [nginx-http-auth]
 mode = normal
 enabled = true
-port    = http,https
+port = http,https
 logpath = %(nginx_error_log)s
 
 [nginx-limit-req]
 enabled = true
-port    = http,https
+port = http,https
 logpath = %(nginx_error_log)s
 
 [nginx-botsearch]
 enabled = true
-port     = http,https
-logpath  = %(nginx_error_log)s
+port = http,https
+logpath = %(nginx_error_log)s
 
 [nginx-bad-request]
 enabled = true
-port    = http,https
+port = http,https
 logpath = %(nginx_access_log)s
 
 [bitwarden]
-port    = http,https
+port = http,https
 logpath = /home/*/bwdata/logs/identity/Identity/log.txt
 
 [scanlogd]
@@ -40,5 +42,5 @@ logpath = %(syslog_local0)s
 banaction = %(banaction_allports)s
 
 [monitorix]
-port    = 8080
+port = 8080
 logpath = /var/log/monitorix-httpd

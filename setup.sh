@@ -109,16 +109,15 @@ ConfigureGithubHook() {
     jq --arg id "$GithubHookID" \
         --arg execute_command "/sites/$domain/Scripts/site_hook.sh" \
         --arg secret "$GithubHookSecret" \
-        '.[].id = $id |
-        .[].["execute-command"] = $execute_command |
-        .[].["command-working-directory"] = "/" |
-        .[].["trigger-rule"].and |= map(
+        '.[0].id = $id |
+        .[0]."execute-command" = $execute_command |
+        .[0]."command-working-directory" = "/" |
+        .[0]."trigger-rule".and[] |= 
             if .match.type == "payload-hmac-sha1" then
                 .match.secret = $secret
             else
                 .
-            end
-        )' \
+            end' \
     "$hooks_json" > "${hooks_json}.tmp" && mv "${hooks_json}.tmp" "$hooks_json"
 
     cat <<EOF >"/sites/$domain/Scripts/site_hook.sh"
