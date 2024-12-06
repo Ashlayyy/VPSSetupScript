@@ -443,6 +443,7 @@ ConfigureScriptOnLogin() {
     " >> /etc/ntfy/server.yml
     echo -e "NTFY Starting up!"
     sudo ntfy serve &
+    sleep 5
     echo -e "NTFY Started up!"
     echo -e"$NTFY_PASSWORD" 
     sudo ntfy user add --role=admin $user
