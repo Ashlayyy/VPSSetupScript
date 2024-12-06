@@ -445,8 +445,7 @@ ConfigureScriptOnLogin() {
     sudo ntfy serve &
     sleep 5
     echo -e "NTFY Started up!"
-    echo -e"$NTFY_PASSWORD" 
-    sudo ntfy user add --role=admin $user
+    yes "$NTFY_PASSWORD" | sudo ntfy user add --role=admin $user
     echo -e "NTFY User has been added"
     sudo ntfy user list
 
