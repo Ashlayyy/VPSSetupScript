@@ -442,13 +442,14 @@ ConfigureScriptOnLogin() {
     log-file: "/var/log/ntfy/ntfy.log"
     " >> /etc/ntfy/server.yml
     echo -e "NTFY Starting up!"
-    sudo ntfy serve &> /dev/null
+    sudo ntfy serve &
     echo -e "NTFY Started up!"
-    yes "$NTFY_PASSWORD" | sudo ntfy user add --role=admin $user
+    echo -e"$NTFY_PASSWORD" 
+    sudo ntfy user add --role=admin $user
     echo -e "NTFY User has been added"
     sudo ntfy user list
 
-    echo -e "TOKEN READING FRM FILE"
+    echo -e "TOKEN READING FROM FILE"
 
     sudo ntfy token list $user &> temp_list.txt
     tokenListString=$(<temp_list.txt)
