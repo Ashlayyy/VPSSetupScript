@@ -442,7 +442,7 @@ ConfigureScriptOnLogin() {
     log-file: "/var/log/ntfy/ntfy.log"
     " >> /etc/ntfy/server.yml
     echo -e "NTFY Starting up!"
-    sudo ntfy serve &
+    sudo ntfy serve &> /dev/null
     echo -e "NTFY Started up!"
     yes "$NTFY_PASSWORD" | sudo ntfy user add --role=admin $user
     echo -e "NTFY User has been added"
