@@ -1,0 +1,49 @@
+{
+  "domain": "example.com",
+  "email": "admin@example.com",
+  "user": "admin",
+  "ports": {
+    "ssh": 1087,
+    "ntfy": 2586
+  },
+  "repositories": {
+    "config": "https://github.com/Ashlayyy/config.git"
+  },
+  "sshKeys": ["ssh-rsa AAAA... laptop-key", "ssh-ed25519 AAAA... phone-key"],
+  "vpnIps": {
+    "primary": "10.0.0.1",
+    "secondary": "10.0.0.2"
+  },
+  "features": {
+    "ssl": true,
+    "nginx": true,
+    "docker": true,
+    "fail2ban": true,
+    "prometheus": true,
+    "grafana": true,
+    "ntfy": true,
+    "pm2": true,
+    "githubWebhooks": true,
+    "serverHardening": true
+  },
+  "projects": [
+    {
+      "name": "project1",
+      "port": 3000,
+      "filename": "index.js",
+      "githubUrl": "https://github.com/org/project1.git",
+      "githubBranch": "main",
+      "githubHook": "WEBHOOK_ID_1=WEBHOOK_SECRET_1",
+      "optionalFolder": "frontend"
+    },
+    {
+      "name": "project2",
+      "port": 3001,
+      "filename": "server.js",
+      "githubUrl": "https://github.com/org/project2.git",
+      "githubBranch": "develop",
+      "githubHook": "WEBHOOK_ID_2=WEBHOOK_SECRET_2",
+      "optionalFolder": "api"
+    }
+  ]
+}
