@@ -1,0 +1,61 @@
+{
+  "domain": "example.com",
+  "email": "admin@example.com",
+  "user": "admin",
+  "ports": {
+    "ssh": 22,
+    "ntfy": 2586
+  },
+  "repositories": {
+    "config": "https://github.com/user/config.git"
+  },
+  "features": {
+    "ssl": true,
+    "nginx": true,
+    "docker": true,
+    "fail2ban": true,
+    "prometheus": true,
+    "grafana": true,
+    "ntfy": true,
+    "pm2": true,
+    "githubWebhooks": true,
+    "serverHardening": true
+  },
+  "projects": [
+    {
+      "name": "main-site",
+      "port": 3000,
+      "filename": "server.js",
+      "githubUrl": "https://github.com/user/main-site.git",
+      "githubBranch": "main",
+      "githubHook": "main-site=webhooksecret123",
+      "pm2Mode": "server",
+      "domains": ["example.com"],
+      "distFolder": "dist"
+    },
+    {
+      "name": "api",
+      "port": 3001,
+      "filename": "app.js",
+      "githubUrl": "https://github.com/user/api.git",
+      "githubBranch": "main",
+      "githubHook": "api=webhooksecret456",
+      "pm2Mode": "server",
+      "domains": ["api.example.com"],
+      "distFolder": "dist/src"
+    },
+    {
+      "name": "dashboard",
+      "port": 3002,
+      "filename": "index.js",
+      "githubUrl": "https://github.com/user/dashboard.git",
+      "githubBranch": "main",
+      "githubHook": "dashboard=webhooksecret789",
+      "pm2Mode": "start",
+      "domains": ["dashboard.example.com", "admin.example.com"],
+      "distFolder": "dist"
+    }
+  ],
+  "sshKeys": ["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5... user@hostname"],
+  "vpnIps": ["10.0.0.1", "10.0.0.2", "10.0.0.3"]
+}
