@@ -1,33 +1,118 @@
 #!/bin/bash
 
+# Add near the start of the script, before first output
+clear  # Clear the screen
+
+# Initialize log files
+: > "$ERROR_LOG"
+: > "$WARN_LOG"
+: > "$INFO_LOG"
+
 export LC_ALL=C
 set -e;
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 ScriptPath="$SCRIPT_DIR/Config/script-on-login.sh"
 
-# Add at the top after the initial variables
-ERROR_LOG="/tmp/setup_errors.log"
-WARN_LOG="/tmp/setup_warnings.log"
+NTFY_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+USER_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+STRING="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+RANDOMSTRING_PROMETHEUS="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+RANDOMSTRING_GRAFANA="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+PROMETHEUS_USERNAME="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10; echo)"
+GRAFANA_USERNAME="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10; echo)"
+PROMETHEUS_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+GRAFANA_PASSWORD="$(tr -dc A-Za-z0-9 </dev/urandom | head -c 20; echo)"
+
+TOTAL_STEPS=14
+CURRENT_STEP=0
+LOG_BUFFER=()
+LOG_BUFFER_SIZE=8
+
+run_cmd() {
+    local cmd="$1"
+    local log_msg="$2"
+    
+    if [ -n "$log_msg" ]; then
+        log_info "$log_msg"
+    fi
+
+    if ! eval "$cmd" >> "$INFO_LOG" 2>> "$ERROR_LOG"; then
+        log_warning "Command failed: $cmd"
+        return 1
+    fi
+    return 0
+}
+
+update_progress() {
+    local step_name="$1"
+    CURRENT_STEP=$((CURRENT_STEP + 1))
+    
+    # Calculate percentage
+    local percentage=$((CURRENT_STEP * 100 / TOTAL_STEPS))
+    
+    # Create the progress bar
+    local bar_size=50
+    local filled_size=$((percentage * bar_size / 100))
+    local empty_size=$((bar_size - filled_size))
+    
+    # Build the bar
+    local bar="["
+    for ((i=0; i<filled_size; i++)); do bar+="="; done
+    if [ $percentage -lt 100 ]; then bar+=">"; empty_size=$((empty_size-1)); fi
+    for ((i=0; i<empty_size; i++)); do bar+=" "; done
+    bar+="]"
+    
+    # Clear previous lines
+    echo -en "\033[${LOG_BUFFER_SIZE}A\033[K"
+    
+    # Print progress bar and percentage
+    echo -e "\033[36m${bar} ${percentage}%\033[0m"
+    echo -e "\033[33mCurrent Step: ${step_name}\033[0m"
+    
+    # Print recent logs
+    for log in "${LOG_BUFFER[@]}"; do
+        echo -e "$log"
+    done
+}
+
+# Modify the log_info function to maintain a buffer of recent messages
+log_info() {
+    local msg="$1"
+    local timestamp=$(date '+%H:%M:%S')
+    local log_entry="\033[90m[$timestamp]\033[0m \033[32m[INFO]\033[0m $msg"
+    
+    # Add to log buffer
+    LOG_BUFFER=("${LOG_BUFFER[@]:1-LOG_BUFFER_SIZE+1}")  # Remove oldest if buffer full
+    LOG_BUFFER+=("$log_entry")
+    
+    # Ensure buffer is filled
+    while [ ${#LOG_BUFFER[@]} -lt $LOG_BUFFER_SIZE ]; do
+        LOG_BUFFER=("" "${LOG_BUFFER[@]}")
+    done
+    
+    # Print initial blank lines for the progress display
+    if [ $CURRENT_STEP -eq 0 ]; then
+        for ((i=0; i<LOG_BUFFER_SIZE+2; i++)); do echo; done
+    fi
+    
+    # Write to actual log
+    echo -e "[INFO] $msg" >> "$INFO_LOG"
+}
 
 log_error() {
     local msg="$1"
     local fatal="${2:-false}"
-    echo -e "[ERROR] $msg" | tee -a "$ERROR_LOG"
+    echo -e "[ERROR] $msg" >> "$ERROR_LOG"
     if [[ "$fatal" == "true" ]]; then
-        echo -e "Fatal error, cannot continue. Check $ERROR_LOG for details."
+        update_progress "FATAL ERROR - Check $ERROR_LOG"
         exit 1
     fi
 }
 
 log_warning() {
     local msg="$1"
-    echo -e "[WARNING] $msg" | tee -a "$WARN_LOG"
-}
-
-log_info() {
-    local msg="$1"
-    echo -e "[INFO] $msg"
+    echo -e "[WARNING] $msg" >> "$WARN_LOG"
 }
 
 cancel() {
@@ -99,16 +184,24 @@ LoadConfig() {
         ssh_keys=""
     fi
 
-    # Load VPN IPs (optional)
-    vpn_ip_primary=$(echo "$config" | jq -r '.vpnIps.primary // empty')
-    vpn_ip_secondary=$(echo "$config" | jq -r '.vpnIps.secondary // empty')
-    if [[ -z "$vpn_ip_primary" && -z "$vpn_ip_secondary" ]]; then
+    # Load VPN IPs as an array instead of just primary/secondary
+    if ! vpn_ips=($(echo "$config" | jq -r '.vpnIps[]')); then
         log_warning "No VPN IPs specified, some features may be limited"
+        vpn_ips=()
     fi
+
+    # Validate IP addresses
+    for ip in "${vpn_ips[@]}"; do
+        if ! [[ $ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            log_warning "Invalid IP address format: $ip"
+        fi
+    done
+
+    log_info "Loaded ${#vpn_ips[@]} VPN IP addresses"
 }
 
 ConfigurePackages() {
-    log_info "Installing packages..."
+    update_progress "Installing Packages"
     
     # Define required packages
     local base_packages=(
@@ -135,7 +228,7 @@ ConfigurePackages() {
     # Update package list with retry
     local max_retries=3
     local retry_count=0
-    while ! apt update -y && ((retry_count < max_retries)); do
+    while ! run_cmd "apt update -y" "Updating package list..." && ((retry_count < max_retries)); do
         log_warning "apt update failed, retrying..."
         sleep 5
         ((retry_count++))
@@ -149,7 +242,7 @@ ConfigurePackages() {
     for pkg in "${base_packages[@]}"; do
         if ! dpkg -l | grep -q "^ii.*$pkg"; then
             log_info "Installing $pkg..."
-            if ! apt install -y "$pkg"; then
+            if ! run_cmd "apt install -y $pkg" "Installing $pkg..."; then
                 log_error "Failed to install $pkg" true
             fi
         else
@@ -161,6 +254,7 @@ ConfigurePackages() {
 }
 
 ConfigureUser() {
+    update_progress "Configuring User"
     log_info "Configuring user: $user"
 
     # Check if user exists
@@ -236,6 +330,7 @@ ConfigureUser() {
 }
 
 ConfigureDocker() {
+    update_progress "Setting up Docker"
     if [[ "$docker_enabled" != "true" ]]; then
         log_info "Docker installation skipped (disabled in config)"
         return
@@ -321,6 +416,7 @@ ConfigureDocker() {
 }
 
 ConfigureFolderStructure() {
+    update_progress "Creating Folder Structure"
     log_info "Setting up folder structure..."
 
     # Create main site directory
@@ -412,6 +508,7 @@ ConfigureFolderStructure() {
 }
 
 ConfigurePM2() {
+    update_progress "Configuring PM2"
     if [[ "$pm2_enabled" != "true" ]]; then
         log_info "PM2 setup skipped (disabled in config)"
         return
@@ -473,17 +570,31 @@ ConfigurePM2() {
             continue
         fi
 
-        # Check if file exists
-        if [ ! -f "$filename" ]; then
-            log_warning "Project file not found: $filename in $project_path"
-            continue
-        fi
-
         # Start project with PM2
-        if ! pm2 start "$filename" --watch --ignore-watch="node_modules" --time --name "$name"; then
-            log_warning "Failed to start PM2 for project: $name"
-            # Try to restart if it exists
-            pm2 restart "$name" || log_warning "Failed to restart PM2 for project: $name"
+        pm2_mode=$(echo "$project" | jq -r '.pm2Mode // "start"')
+        dist_folder=$(echo "$project" | jq -r '.distFolder // "dist"')  # Get dist folder from config, default to "dist"
+        serve_path="$project_path/$dist_folder"
+
+        if [[ "$pm2_mode" == "serve" ]]; then
+
+            if [ ! -d "$serve_path" ]; then
+                log_warning "Distribution directory not found: $serve_path"
+                continue
+            fi
+            
+            if ! pm2 serve "$serve_path" --name "$name" --spa --time; then
+                log_warning "Failed to start PM2 serve for project: $name"
+                pm2 restart "$name" || log_warning "Failed to restart PM2 serve for project: $name"
+            fi
+        else
+            if [ ! -f "$filename" ]; then
+                log_warning "Project file not found: $filename in $project_path"
+                continue
+            fi
+            if ! pm2 start "$serve_path/$filename" --time --name "$name"; then
+                log_warning "Failed to start PM2 for project: $name"
+                pm2 restart "$name" || log_warning "Failed to restart PM2 for project: $name"
+            fi
         fi
     done
 
@@ -510,6 +621,7 @@ ConfigurePM2() {
 }
 
 ConfigureErrorPage() {
+    update_progress "Setting up Error Pages"
     if [[ "$nginx_enabled" != "true" ]]; then
         log_info "Error page setup skipped (nginx disabled in config)"
         return
@@ -613,6 +725,7 @@ EOF
 }
 
 ConfigureGithubHook() {
+    update_progress "Configuring Github Webhooks"
     if [[ "$github_webhooks_enabled" != "true" ]]; then
         log_info "Github webhooks setup skipped (disabled in config)"
         return
@@ -736,6 +849,7 @@ EOF
 }
 
 ConfigureNGINX() {
+    update_progress "Setting up NGINX"
     if [[ "$nginx_enabled" != "true" ]]; then
         log_info "NGINX setup skipped (disabled in config)"
         return
@@ -746,155 +860,109 @@ ConfigureNGINX() {
     # Remove default config if it exists
     rm -f "/etc/nginx/sites-enabled/default"
 
-    # Create config file
-    local config_file="/etc/nginx/conf.d/$domain.conf"
-    if ! touch "$config_file"; then
-        log_error "Failed to create NGINX configuration file" true
+    # Create a map of domains to their projects
+    declare -A domain_projects
+    
+    # First, handle NTFY subdomain if enabled
+    if [[ "$ntfy_enabled" == "true" ]]; then
+        log_info "Adding NTFY subdomain configuration"
+        domain_projects["ntfy.$domain"]="ntfy:$NFTY_Port"
     fi
 
-    # Create IP access control string if VPN IPs are provided
-    local ip_access_control=""
-    local ip_access_control_list=""
-    
-    if [[ -n "$vpn_ip_primary" ]]; then
-        ip_access_control_list+="allow $vpn_ip_primary;"$'\n'
-        log_info "Added primary VPN IP to access control"
-    fi
-    if [[ -n "$vpn_ip_secondary" ]]; then
-        ip_access_control_list+="allow $vpn_ip_secondary;"$'\n'
-        log_info "Added secondary VPN IP to access control"
-    fi
-    
-    # Add proper indentation
-    if [[ -n "$ip_access_control_list" ]]; then
-        while IFS= read -r line; do
-            ip_access_control+="          $line"
-        done <<< "$ip_access_control_list"
-    else
-        log_warning "No VPN IPs configured for access control"
-    fi
-
-    # Generate location blocks for each project
-    local project_locations=""
+    # Group projects by domain
     echo "$config" | jq -c '.projects[]' | while read -r project; do
         name=$(echo "$project" | jq -r '.name')
         port=$(echo "$project" | jq -r '.port')
         
-        if [ -z "$port" ] || [ "$port" = "null" ]; then
-            log_warning "No port specified for project: $name, skipping"
-            continue
-        fi
-
-        project_locations+="
-        location /$name/ {
-            proxy_set_header        Host \$host:\$server_port;
-            proxy_set_header        X-Real-IP \$remote_addr;
-            proxy_set_header        X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header        X-Forwarded-Proto \$scheme;
-            proxy_cache            main_cache;
-            proxy_cache_valid      200 302 30m;
-            proxy_cache_valid      404 1m;
-            proxy_pass             http://localhost:$port/;
-            proxy_read_timeout     90;
-            add_header            Strict-Transport-Security \"max-age=31536000; includeSubDomains; preload\";
-            add_header            X-Frame-Options DENY;
-            add_header            X-Content-Type-Options nosniff;
-            add_header            X-XSS-Protection \"1; mode=block\";
-            add_header            Referrer-Policy \"origin\";
-            rewrite              ^([^.]*[^/])$ \$1/ permanent;
-        }"
-        log_info "Added NGINX configuration for project: $name"
+        while IFS= read -r domain_name; do
+            if [[ -z "${domain_projects[$domain_name]}" ]]; then
+                domain_projects[$domain_name]=""
+            fi
+            # Append project info with delimiter
+            domain_projects[$domain_name]+="${domain_projects[$domain_name]:+|}$name:$port"
+        done <<< "$(echo "$project" | jq -r '.domains[]')"
     done
 
-    # Write NGINX configuration with error handling
-    if ! cat <<EOF > "$config_file"; then
-        log_error "Failed to write NGINX configuration" true
-    fi
-    server {
-        listen 80 default_server;
-        listen [::]:80 default_server;
-        server_name _;
-        return 301 https://\$host\$request_uri;
-    }
+    # Create NGINX config for each unique domain
+    for domain_name in "${!domain_projects[@]}"; do
+        base_domain=$(echo "$domain_name" | awk -F. '{if (NF>2) {print $(NF-1)"."$NF} else {print $0}}')
+        config_file="/etc/nginx/conf.d/${base_domain}.conf"
+        
+        # Create the config file
+        if ! touch "$config_file"; then
+            log_error "Failed to create NGINX configuration file for $domain_name" true
+        fi
 
-    proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=main_cache:10m max_size=1g inactive=360m use_temp_path=off;
+        # Basic server configuration
+        cat > "$config_file" <<EOF
+# Cache configuration
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=main_cache:10m max_size=10g inactive=60m use_temp_path=off;
 
-    server {
-        server_name ntfy.$domain www.ntfy.$domain;
-        access_log /var/log/nginx/ntfy.$domain.access.log;
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $domain_name;
+    return 301 https://\$server_name\$request_uri;
+}
 
-        location / {
-            proxy_pass http://127.0.0.1:$NFTY_Port;
-            proxy_http_version 1.1;
-            proxy_buffering off;
-            proxy_request_buffering off;
-            proxy_redirect off;
-            proxy_set_header Host \$http_host;
-            proxy_set_header Upgrade \$http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_connect_timeout 3m;
-            proxy_send_timeout 3m;
-            proxy_read_timeout 3m;
-            client_max_body_size 0;
-        }
-    }
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name $domain_name;
 
-    server {
-        server_name $domain www.$domain;
-        access_log /var/log/nginx/$domain.access.log;
+    ssl_certificate /etc/letsencrypt/live/$base_domain/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$base_domain/privkey.pem;
+    
+    # Common security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Referrer-Policy "origin";
 
-        $error_page_config
+EOF
 
-        location /hooks/ {
-            proxy_pass http://localhost:9000/hooks/;
-        }
-
-        proxy_set_header                Host \$host:\$server_port;
-        proxy_set_header                X-Real-IP \$remote_addr;
-        proxy_set_header                X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header                X-Forwarded-Proto \$scheme;
-        add_header                      X-Cache-Status \$upstream_cache_status;
-        add_header                      Strict-Transport-Security "max-age=63072000 always;";
-        add_header                      X-Frame-Options DENY;
-        add_header                      X-Content-Type-Options nosniff;
-        add_header                      X-XSS-Protection "1; mode=block";
-        add_header                      Content-Security-Policy "default-src 'self'; font-src *;img-src * data:; script-src *; style-src *";
-        add_header                      Referrer-Policy "origin";
-        proxy_cache                     main_cache;
-        proxy_cache_valid               200 302 60m;
-        proxy_cache_valid               404 1m;
-        proxy_cache_use_stale           error timeout http_500 http_502 http_503 http_504;
-        proxy_cache_background_update   on;
-        proxy_cache_methods             GET HEAD;
-        proxy_read_timeout              90;
-        rewrite ^([^.]*[^/])$ \$1/ permanent;
-
-        $project_locations
-
-        location /$RANDOMSTRING_PROMETHEUS/prometheus/$RANDOMSTRING_PROMETHEUS/ {
-            satisfy all;
-            allow 127.0.0.1;
-            ${ip_access_control}          
-            deny all;
-            auth_basic                "Prometheus";
-            auth_basic_user_file      /etc/nginx/.prometheus.htpasswd;
-            proxy_pass                http://localhost:9090/;
-            proxy_read_timeout        90;
-        }
-
-        location /$RANDOMSTRING_GRAFANA/grafana/$RANDOMSTRING_GRAFANA/ {
-            satisfy all;
-            allow 127.0.0.1;
-            ${ip_access_control}          
-            deny all;
-            auth_basic                "Grafana";
-            auth_basic_user_file      /etc/nginx/.grafana.htpasswd;
-            proxy_pass                http://localhost:3000/;
-            proxy_read_timeout        90;
-        }
+        # Add location blocks for each project under this domain
+        IFS='|' read -ra projects <<< "${domain_projects[$domain_name]}"
+        for project in "${projects[@]}"; do
+            IFS=':' read -r project_name project_port <<< "$project"
+            
+            # Special handling for NTFY
+            if [[ "$project_name" == "ntfy" ]]; then
+                cat >> "$config_file" <<EOF
+    location / {
+        proxy_pass http://localhost:$project_port;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 EOF
+            else
+                cat >> "$config_file" <<EOF
+    location /$project_name {
+        proxy_pass http://localhost:$project_port/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache main_cache;
+        proxy_cache_valid 200 302 30m;
+        proxy_cache_valid 404 1m;
+    }
+EOF
+            fi
+        done
+
+        # Close the server block
+        echo "}" >> "$config_file"
+    done
 
     # Test NGINX configuration
     if ! nginx -t; then
@@ -919,6 +987,7 @@ EOF
 }
 
 ConfigureGitClone() {
+    update_progress "Cloning Git Repositories"
     log_info "Setting up Git repositories..."
 
     # Process each project
@@ -1015,6 +1084,7 @@ ConfigureGitClone() {
 }
 
 ConfigureFail2Ban() {
+    update_progress "Configuring Fail2Ban"
     if [[ "$fail2ban_enabled" != "true" ]]; then
         log_info "Fail2ban setup skipped (disabled in config)"
         return
@@ -1025,7 +1095,7 @@ ConfigureFail2Ban() {
     # Install required packages if not already installed
     if ! dpkg -l | grep -q fail2ban; then
         log_info "Installing fail2ban and dependencies"
-        apt-get install fail2ban python3-systemd -y || log_error "Failed to install fail2ban" true
+        run_cmd "apt-get install fail2ban python3-systemd -y" "Installing fail2ban and dependencies..." || log_error "Failed to install fail2ban" true
     fi
 
     # Create fail2ban config directory if it doesn't exist
@@ -1044,10 +1114,22 @@ ConfigureFail2Ban() {
         log_error "Failed to create fail2ban configuration" true
     fi
 
-    # Update SSH port in fail2ban config
-    if ! sed -i "s/port = 1087, 22/port = $SSH_Port, 22/" "/etc/fail2ban/jail.local"; then
-        log_warning "Failed to update SSH port in fail2ban configuration"
-    fi
+    # Configure SSH jail based on OS
+    case "$ID" in
+        debian)
+            # For Debian, keep the backend=systemd setting
+            if ! sed -i "s/port = 1087, 22/port = $SSH_Port, 22/" "/etc/fail2ban/jail.local"; then
+                log_warning "Failed to update SSH port in fail2ban configuration"
+            fi
+            ;;
+        ubuntu)
+            # For Ubuntu, remove the backend setting and update port
+            if ! sed -i -e "s/port = 1087, 22/port = $SSH_Port, 22/" \
+                       -e "/backend=systemd/d" "/etc/fail2ban/jail.local"; then
+                log_warning "Failed to update fail2ban configuration for Ubuntu"
+            fi
+            ;;
+    esac
 
     # Ensure proper permissions
     chmod 644 /etc/fail2ban/jail.local || log_warning "Failed to set fail2ban config permissions"
@@ -1075,6 +1157,7 @@ ConfigureFail2Ban() {
 }
 
 ConfigurePrometheus() {
+    update_progress "Setting up Prometheus"
     if [[ "$prometheus_enabled" != "true" ]]; then
         log_info "Prometheus setup skipped (disabled in config)"
         return
@@ -1220,6 +1303,7 @@ EOF
 }
 
 ConfigureGrafana() {
+    update_progress "Configuring Grafana"
     if [[ "$grafana_enabled" != "true" ]]; then
         log_info "Grafana setup skipped (disabled in config)"
         return
@@ -1352,6 +1436,7 @@ EOF
 }
 
 ConfigureSSL() {
+    update_progress "Setting up SSL"
     if [[ "$ssl" != "true" ]]; then
         log_info "SSL setup skipped (disabled in config)"
         return
@@ -1366,13 +1451,13 @@ ConfigureSSL() {
         local retry_count=0
         
         # Update and install snapd
-        apt update -y || log_warning "Failed to update package list"
-        if ! apt install snapd -y; then
+        run_cmd "apt update -y" "Updating package list..." || log_warning "Failed to update package list"
+        if ! run_cmd "apt install snapd -y" "Installing snapd..."; then
             log_error "Failed to install snapd" true
         fi
 
         # Remove existing certbot installations
-        apt-get remove certbot -y || log_warning "Failed to remove old certbot"
+        run_cmd "apt-get remove certbot -y" "Removing old certbot..." || log_warning "Failed to remove old certbot"
         snap remove certbot || log_warning "Failed to remove old certbot snap"
 
         # Install certbot with retry
@@ -1392,19 +1477,26 @@ ConfigureSSL() {
         fi
     fi
 
-    # Get SSL certificates for main domain
-    log_info "Getting SSL certificate for $domain"
-    if ! certbot --nginx -d "$domain" -d "www.$domain" --email "$email" --agree-tos --non-interactive; then
-        log_error "Failed to obtain SSL certificate for main domain" true
-    fi
+    # Get unique base domains
+    declare -A base_domains
+    echo "$config" | jq -c '.projects[]' | while read -r project; do
+        while IFS= read -r domain_name; do
+            # Add both the domain and its www version
+            base_domains["$domain_name"]=1
+        done < <(echo "$project" | jq -r '.domains[]')
+    done
 
-    # Get SSL certificates for NTFY subdomain if enabled
-    if [[ "$ntfy_enabled" == "true" ]]; then
-        log_info "Getting SSL certificate for ntfy.$domain"
-        if ! certbot --nginx -d "ntfy.$domain" -d "www.ntfy.$domain" --email "$email" --agree-tos --non-interactive; then
-            log_warning "Failed to obtain SSL certificate for NTFY subdomain"
+    # Get SSL certificates for each base domain and its subdomains
+    for domain_name in "${!base_domains[@]}"; do
+        log_info "Getting SSL certificate for $domain_name"
+        
+        # Collect all domains for this certificate
+        domain_args=("-d" "$domain_name" "-d" "www.$domain_name")
+        
+        if ! certbot --nginx "${domain_args[@]}" --email "$email" --agree-tos --non-interactive; then
+            log_error "Failed to obtain SSL certificate for $domain_name" true
         fi
-    fi
+    done
 
     # Verify certbot timer is active
     if ! systemctl is-active --quiet certbot.timer; then
@@ -1446,6 +1538,7 @@ ConfigureSSL() {
 }
 
 ConfigureServer() {
+    update_progress "Hardening Server"
     if [[ "$server_hardening_enabled" != "true" ]]; then
         log_info "Server hardening skipped (disabled in config)"
         return
@@ -1551,7 +1644,7 @@ MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com"
     systemctl restart ssh || log_warning "Failed to restart SSH"
 
     # Clean up
-    apt autoremove -y || log_warning "Failed to clean up packages"
+    run_cmd "apt autoremove -y" "Cleaning up packages..." || log_warning "Failed to clean up packages"
 
     # Verify SSH service
     if ! systemctl is-active --quiet ssh; then
@@ -1568,6 +1661,42 @@ MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com"
     log_info "SSH configuration test passed"
 
     log_info "Server security configuration completed"
+}
+
+ConfigureScriptOnLogin() {
+    update_progress "Setting up Login Script"
+    
+    log_info "Configuring login script..."
+    
+    # Create the Scripts/OnLogin directory if it doesn't exist
+    local script_dir="/sites/$domain/Scripts/OnLogin"
+    if ! mkdir -p "$script_dir"; then
+        log_error "Failed to create script directory: $script_dir" true
+    fi
+
+    # Create the login script
+    local login_script="$script_dir/script-on-login.sh"
+    cat > "$login_script" <<EOF
+#!/bin/bash
+
+String="$STRING"
+NTFYTOKEN="$NTFY_PASSWORD"
+NTFYURL="https://ntfy.$domain/$STRING"
+
+curl -X PUT -d "\"\$SSH_CONNECTION\" - \"\$USER\" logged in on \$HOSTNAME" \$NTFYURL -H "Authorization: Bearer \$NTFYTOKEN" -H "Priority: 4" -H "X-Tags: warning" -H "Title: \$HOSTNAME -- SSH LOGIN" > /dev/null 2>&1
+
+if [[ \$SSH_ORIGINAL_COMMAND ]]; then
+    eval "\$SSH_ORIGINAL_COMMAND"
+    exit
+fi
+/bin/bash
+EOF
+
+    # Set proper permissions
+    chmod 755 "$login_script" || log_error "Failed to set permissions on login script" true
+    chown "$user:$user" "$login_script" || log_warning "Failed to set ownership of login script"
+
+    log_info "Login script configured successfully"
 }
 
 SendEchoToEndUser() {
@@ -1745,10 +1874,6 @@ if [[ $EUID -ne 0 ]]; then
     echo "This script must be run as root"
     exit 1
 fi
-
-# Initialize log files
-: > "$ERROR_LOG"
-: > "$WARN_LOG"
 
 log_info "Starting server configuration..."
 
