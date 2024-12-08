@@ -1,6 +1,0 @@
-#cloud-config
-runcmd:
-  - [apt-get, install, git]
-  - [git, clone, https://github.com/Ashlayyy/VPSSetupScript.git]
-  - [cd, VPSSetupScript]
-  - [chmod, +x, setup.sh]
